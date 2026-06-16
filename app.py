@@ -9,14 +9,12 @@ from tkinter import messagebox
 from tkinter import font
 from PIL import Image, ImageTk  # Necesitas instalar Pillow para el logo pag ppal
 import os
+from altaAsisgnacion import info_asignaciones
 from database import crear_tablas
 from centraVent import centrar_ventana
 from datosDocentes import info_profesor
 from altaMaterias import info_materias
-"""from altaCursos import info_cursos
-from altaHorarios import info_horarios
-from altaAsignaciones import info_asignaciones
-from listados import ventana_listado"""
+#from listados import ventana_listado"""
 import sesion
 from estilos import configurar_estilos
 """from listadoCursos import ventana_listado_curso
@@ -114,20 +112,10 @@ def pPrincipal():
     barramenu.add_cascade(label="Materias", menu=mMaterias)
     mMaterias.add_command(label="Agregar Materias", command=info_materias)
 
-    """#Menú Cursos
-    mCursos = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Cursos", menu=mCursos)
-    mCursos.add_command(label="Agregar Cursos", command="info_cursos")
-
-    #Menú Horarios
-    mHorarios = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Horarios", menu=mHorarios)
-    mHorarios.add_command(label="Creación de Horarios", command="info_horarios")
-
-    #Menú Asignacopnes de Profesores
+     #Menú Asignacopnes de Profesores
     mAsignaciones = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Asignaciones", menu=mAsignaciones)
-    mAsignaciones.add_command(label="Asignaciones Profesores", command="info_asignaciones")
+    barramenu.add_cascade(label="Asignaciones Docentes", menu=mAsignaciones)
+    mAsignaciones.add_command(label="Asignaciones Profesores", command=info_asignaciones)
 
     #Menú Listados de profesores
     mListados = tk.Menu(barramenu, tearoff=0)

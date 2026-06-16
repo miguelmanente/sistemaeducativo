@@ -91,23 +91,24 @@ def crear_tablas():
         descripcion TEXT
     );
                          
-
+    /* ======================================================================= */
+    /* 🔥 NUEVA TABLA ASIGNACIONES DOCENTES (MODIFICADA Y OPTIMIZADA)          */
+    /* ======================================================================= */
     CREATE TABLE IF NOT EXISTS asignacion (
         id_asignacion INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_docente INTEGER NOT NULL,
-        id_materia INTEGER,
-        cargo TEXT,
-        curso TEXT,
+        id_profesor INTEGER,              -- Conecta con la tabla profesores
+        id_materia INTEGER NULL,          -- Conecta con materias (puede ser NULL si es cargo fijo)
+        tipo_cargo TEXT,                  -- 'Módulos', 'Director', 'Preceptor', etc.
+        curso TEXT,                       -- Ej: '4to 1ra'
+        turno TEXT,                       -- Mañana, Tarde, Vespertino
         hentrada TEXT,
         hsalida TEXT,
-        turno TEXT,
-        toma_pos TEXT,
-        activo INTEGER DEFAULT 1,
-
-        FOREIGN KEY (id_docente)
-            REFERENCES profesores(id_docente)
-        FOREIGN KEY (id_materia)
-            REFERENCES materias(id_materia)
+        situacion_revista TEXT,           -- Titular, Provisional, Suplente
+        toma_pos TEXT,                    -- Fecha de toma de posesión
+        activo INTEGER DEFAULT 1,         -- 1 = Activo, 0 = Cesado (para historial)
+        
+        FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor),
+        FOREIGN KEY (id_materia) REFERENCES materias(id_materia)
     );
                          
     """)
