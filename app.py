@@ -17,6 +17,7 @@ from altaMaterias import info_materias
 #from listados import ventana_listado"""
 import sesion
 from estilos import configurar_estilos
+from trayectoriaDocente import abrir_trayectoria_docente
 """from listadoCursos import ventana_listado_curso
 from listadoTurnos import listado_personal_turnos
 from historialDocente import ventana_historial
@@ -117,9 +118,14 @@ def pPrincipal():
     barramenu.add_cascade(label="Asignaciones Docentes", menu=mAsignaciones)
     mAsignaciones.add_command(label="Asignaciones Profesores", command=info_asignaciones)
 
+    #Menú Trayectoria Docente
+    mAsignaciones = tk.Menu(barramenu, tearoff=0)
+    barramenu.add_cascade(label="Historisal Docente", menu=mAsignaciones)
+    mAsignaciones.add_command(label="Visualizar Trayactorias", command=abrir_trayectoria_docente)
+
     #Menú Listados de profesores
-    mListados = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Listados", menu=mListados)
+    #mListados = tk.Menu(barramenu, tearoff=0)
+    #barramenu.add_cascade(label="Listados", menu=mListados)
     #mListados.add_command(label="Profesores Titulares", command=lambda: "ventana_listado("Titular"))
    # mListados.add_command(label="Profesores Provisorio", command=lambda: "ventana_listado("Provisorio"))
    # mL

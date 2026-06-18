@@ -236,7 +236,7 @@ def info_asignaciones():
                     toma_pos,
                     fecha_cese,
                     activo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 profesores_dict[profesor_var.get()],
                 materia_dict[materia_var.get()],
@@ -417,6 +417,7 @@ def info_asignaciones():
                 activo_var.set(1)
             else:
                 activo_var.set(0)
+
     tree.bind("<<TreeviewSelect>>", on_tree_select)
     # -------------------------------------------------------------------------------------
     def on_tree_select(event):
