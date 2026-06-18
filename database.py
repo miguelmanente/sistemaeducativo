@@ -98,13 +98,16 @@ def crear_tablas():
         id_asignacion INTEGER PRIMARY KEY AUTOINCREMENT,
         id_profesor INTEGER,              -- Conecta con la tabla profesores
         id_materia INTEGER NULL,          -- Conecta con materias (puede ser NULL si es cargo fijo)
-        tipo_cargo TEXT,                  -- 'Módulos', 'Director', 'Preceptor', etc.
+        dia TEXT,                        -- Lunes, Martes, etc.
+        cargo TEXT,                  -- 'Módulos', 'Director', 'Preceptor', etc.
+        modulos INTEGER DEFAULT 0,
         curso TEXT,                       -- Ej: '4to 1ra'
         turno TEXT,                       -- Mañana, Tarde, Vespertino
         hentrada TEXT,
         hsalida TEXT,
         situacion_revista TEXT,           -- Titular, Provisional, Suplente
-        toma_pos TEXT,                    -- Fecha de toma de posesión
+        toma_pos TEXT,                    -- Fecha en que el docente tomó posesión del cargo (puede ser NULL)
+        fecha_cese TEXT NULL,                    
         activo INTEGER DEFAULT 1,         -- 1 = Activo, 0 = Cesado (para historial)
         
         FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor),
