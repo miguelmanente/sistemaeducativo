@@ -41,7 +41,7 @@ def configurar_estilos():
     # Treeview
     style.configure(
         "Treeview",
-        font=("Arial", 11),
+        font=("Arial", 12),
         rowheight=25
     )
 

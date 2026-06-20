@@ -18,13 +18,14 @@ from altaMaterias import info_materias
 import sesion
 from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
+from parteDiario import abrir_parte_diario
 """from listadoCursos import ventana_listado_curso
 from listadoTurnos import listado_personal_turnos
 from historialDocente import ventana_historial
 from asistenciaDocente import ventana_asistencias
 from rankingAusentismo import ventana_ranking
 from estadisticasDocentes import ventana_estadisticas
-from parte_diario import abrir_parte_diario
+
 """
 
 #Código - Zona de funciones
@@ -63,8 +64,6 @@ def pPrincipal():
             ventana.destroy()
     #----------------------------------------------------------------------------------------------
 
-
-    #------ TKINTER -------------------------------------------------------------------------------
     #-------------------------------------- VENTANA PRINCIPAL -------------------------------------
     #Ventana principal 
     ventana = tk.Toplevel()
@@ -130,11 +129,11 @@ def pPrincipal():
    # mListados.add_command(label="Profesores Provisorio", command=lambda: "ventana_listado("Provisorio"))
    # mL
    # istados.add_command(label="Profesores Suplentes",command=lambda: "ventana_listado("Suplente"))"""
-    """ mListados.add_separator()
-    mListados.add_command(label="Listado por Curso", command="ventana_listado_curso")
-    mListados.add_command(label="Listados por Turnos", command="abrir_parte_diario")
+    mParteDiario = tk.Menu(barramenu, tearoff=0)
+    barramenu.add_cascade(label="Parte Diario", menu=mParteDiario)
+    mParteDiario.add_command(label="Listado Planillas Diarias", command=abrir_parte_diario)
 
-    #Menú Historial Docente
+    """#Menú Historial Docente
     mHistorial = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Historial", menu=mHistorial)
     mHistorial.add_command(label="Historial Docente", command="ventana_historial")

@@ -9,7 +9,7 @@ from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 from database import conectar
 from centraVent import centrar_ventana
-#from backup import crear_backup
+from Backup import crear_backup
 from estilos import configurar_estilos
 
 # Importaciones necesarias de ReportLab para el PDF
@@ -83,7 +83,7 @@ def info_asignaciones():
 
     ttk.Label(frame_superior, text="Día:", font=("Arial", 12)).grid(row=0, column=4, sticky="e", padx=5, pady=5)
     combo_dia = ttk.Combobox(frame_superior, textvariable=dia_var,
-    values=["","Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], state="readonly", font=("Arial", 12))
+    values=["","Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Lunes a Viernes"], state="readonly", font=("Arial", 12))
     combo_dia.grid(row=0, column=5, sticky="ew", padx=5, pady=5)
 
     ttk.Label(frame_superior, text="Tipo_Cargo:", font=("Arial", 12)).grid(row=1, column=0, sticky="e", padx=5, pady=5)
@@ -134,6 +134,13 @@ def info_asignaciones():
     # =========================
     # TREEVIEW (Listado inferior)
     # =========================
+    style = ttk.Style()
+
+    style.configure("Valido.TEntry", foreground="black")
+    style.configure("Error.TEntry", foreground="black")
+    style.map("Error.TEntry",
+            fieldbackground=[("!disabled", "#ffcccc")])  # rojo claro
+    
     frame_inferior = ttk.LabelFrame(ventana, text="Listado Asignaciones", padding=10)
     frame_inferior.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
 
@@ -175,8 +182,11 @@ def info_asignaciones():
     tree.column("activo", width=10)
 
     scrollbar_y = ttk.Scrollbar(frame_inferior, orient="vertical", command=tree.yview)
-    tree.configure(yscrollcommand=scrollbar_y.set)
+    scrollbar_x = ttk.Scrollbar(frame_inferior, orient="horizontal", command=tree.xview)
+    tree.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+    scrollbar_y.grid(row=0, column=0, sticky="nsew")
     scrollbar_y.grid(row=0, column=1, sticky="ns")
+    scrollbar_x.grid(row=1, column=0, sticky="ew")
 
     # ============================================================================
     #                        CARGAS DE COMBOS PROFESOR Y MATERIAS

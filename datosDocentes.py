@@ -10,7 +10,7 @@ from tkinter import font
 from database import conectar
 from centraVent import centrar_ventana
 from estilos import configurar_estilos
-#from backup import crear_backup
+from Backup import crear_backup
 
 # ----------- Función que maneja toda la ventana datos personales del profesor ------------
 def info_profesor():
@@ -401,7 +401,7 @@ def info_profesor():
         direccion.set("")
         fecha_nacimiento.set("")
     #------------------------------------------------------------------------------------------
-    #crear_backup()
+    crear_backup()
     centrar_ventana(ventana)
     cargar_datos_treeview()
     # --------------------------- Botones que permiten agregar, modificar etc. ---------------------------

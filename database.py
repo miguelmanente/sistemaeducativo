@@ -6,7 +6,7 @@
 import sqlite3
 import hashlib
 import os, sys
-#from backup import crear_backup
+from Backup import crear_backup
 
 #--------- función que permite conectarse a la BD profesores -----------------------
 def conectar():
@@ -17,7 +17,7 @@ def conectar():
 
     DATABASE = os.path.join(BASE_DIR, "bdescuela.db")
 
-    print("Base de datos:", DATABASE)
+    #print("Base de datos:", DATABASE)
 
     conn = sqlite3.connect(DATABASE)
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -129,5 +129,5 @@ def crear_tablas():
 
 
     conn.commit()
-    #crear_backup()
+    crear_backup()
     conn.close()

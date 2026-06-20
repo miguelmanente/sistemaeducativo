@@ -56,6 +56,12 @@ def info_materias():
     # =========================
     # FRAME INFERIOR (TREEVIEW)
     # =========================
+    style = ttk.Style()
+
+    style.configure("Valido.TEntry", foreground="black")
+    style.configure("Error.TEntry", foreground="black")
+    style.map("Error.TEntry",
+            fieldbackground=[("!disabled", "#ffcccc")])  # rojo claro
     frame_inferior = ttk.LabelFrame(ventana, text="Listado de Materias",  padding=10)
     frame_inferior.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
