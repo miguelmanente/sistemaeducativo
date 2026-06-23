@@ -114,6 +114,23 @@ def crear_tablas():
         FOREIGN KEY (id_materia) REFERENCES materias(id_materia)
     );
                          
+    CREATE TABLE IF NOT EXISTS inasistencia (
+        id_inasistencia INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_asignacion INTEGER NOT NULL,
+
+        f_desde TEXT NOT NULL,
+        f_hasta TEXT NOT NULL,
+
+        tot_dias_trab INTEGER,
+        cant_inasist INTEGER,
+                         
+        motivo TEXT,
+        observacion TEXT,
+
+        FOREIGN KEY (id_asignacion)
+            REFERENCES asignacion(id_asignacion)
+    );
+                         
     """)
 
     # 2. Controlamos la inserción del Administrador Encriptado desde Python

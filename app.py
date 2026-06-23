@@ -19,6 +19,7 @@ import sesion
 from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
 from parteDiario import abrir_parte_diario
+from inasistenciaDocente import abrir_inasistencia_docente
 """from listadoCursos import ventana_listado_curso
 from listadoTurnos import listado_personal_turnos
 from historialDocente import ventana_historial
@@ -133,16 +134,11 @@ def pPrincipal():
     barramenu.add_cascade(label="Parte Diario", menu=mParteDiario)
     mParteDiario.add_command(label="Listado Planillas Diarias", command=abrir_parte_diario)
 
-    """#Menú Historial Docente
-    mHistorial = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Historial", menu=mHistorial)
-    mHistorial.add_command(label="Historial Docente", command="ventana_historial")
-
     # Menú Asistencias Docentes
     mAsistencias = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Asistencias", menu=mAsistencias)
-    mAsistencias.add_command(label="Control Docente", command="ventana_asistencias")
-    mAsistencias.add_command(label="Ranking Inasistencias", command="ventana_ranking")
+    barramenu.add_cascade(label="Inasistencias Docentes", menu=mAsistencias)
+    mAsistencias.add_command(label="Inasistencias", command=abrir_inasistencia_docente)
+    """mAsistencias.add_command(label="Ranking Inasistencias", command="ventana_ranking")
     mAsistencias.add_command(label="Estadisticas Docentes", command="ventana_estadisticas")
     """
     #Menú Acerca
