@@ -281,7 +281,7 @@ def abrir_trayectoria_docente():
     combo_docente.grid(row=0, column=1, padx=10, sticky="w")
     combo_docente.bind("<<ComboboxSelected>>", buscar_trayectoria) 
     
-    ttk.Button(frame_busqueda, text="🔍 Cargar Historial", command=buscar_trayectoria).grid(row=0, column=2, padx=10)
+    tk.Button(frame_busqueda, text="🔍 Cargar Historial",font=("Segoe UI Emoji", 12, "bold"), command=buscar_trayectoria).grid(row=0, column=2, padx=10)
 
     frame_grid = ttk.LabelFrame(ventana, text=" Registro Histórico de Asignaciones y Servicios ", padding=10)
     frame_grid.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=15, pady=5)
@@ -327,7 +327,7 @@ def abrir_trayectoria_docente():
     frame_botones = ttk.Frame(ventana, padding=10)
     frame_botones.grid(row=2, column=0, columnspan=2, pady=15)
     
-    ttk.Button(frame_botones, text="🖨 Exportar Certificado de Servicios (PDF)", command=generar_certificado_pdf, width=40).grid(row=0, column=0, padx=10)
-    ttk.Button(frame_botones, text="❌ Cerrar Ventana", command=ventana.destroy, width=15).grid(row=0, column=1, padx=10)
+    tk.Button(frame_botones, text="📄 Exportar Certificado de Servicios (PDF)",font=("Segoe UI Emoji", 14, "bold"), command=generar_certificado_pdf, width=40).grid(row=0, column=0, padx=10)
+    tk.Button(frame_botones, text="❌ Cerrar Ventana",font=("Segoe UI Emoji", 14, "bold"), command=ventana.destroy, width=15).grid(row=0, column=1, padx=10)
 
     cargar_combo_docentes()

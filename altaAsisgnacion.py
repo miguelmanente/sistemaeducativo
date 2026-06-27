@@ -698,12 +698,12 @@ def info_asignaciones():
     frame_botones = ttk.Frame(frame_superior)
     frame_botones.grid(row=5, column=0, columnspan=6, pady=15) # Ampliado el columnspan a 6 para centrar bien
 
-    ttk.Button(frame_botones, text="💾 Guardar", command=guardar).grid(row=0, column=0, padx=5)
-    ttk.Button(frame_botones, text="✏ Modificar", command=modificar).grid(row=0, column=1, padx=5)
-    ttk.Button(frame_botones, text="🗑 Eliminar", command=eliminar).grid(row=0, column=2, padx=5)
-    ttk.Button(frame_botones, text="🖨 Crear PDF", command=generar_pdf).grid(row=0, column=3, padx=5)
-    ttk.Button(frame_botones, text="🧹 Limpiar", command=limpiar).grid(row=0, column=4, padx=5)
-    ttk.Button(frame_botones, text="❌ Cerrar", command=ventana.destroy).grid(row=0, column=5, padx=5)
+    tk.Button(frame_botones, text="💾 Guardar",font=("Segoe UI Emoji", 12, "bold"), command=guardar).grid(row=0, column=0, padx=5)
+    tk.Button(frame_botones, text="✏ Modificar",font=("Segoe UI Emoji", 12, "bold"), command=modificar).grid(row=0, column=1, padx=5)
+    tk.Button(frame_botones, text="🗑 Eliminar",font=("Segoe UI Emoji", 12, "bold"), command=eliminar).grid(row=0, column=2, padx=5)
+    tk.Button(frame_botones, text="📄 Crear PDF",font=("Segoe UI Emoji", 12, "bold"), command=generar_pdf).grid(row=0, column=3, padx=5)
+    tk.Button(frame_botones, text="🧹 Limpiar",font=("Segoe UI Emoji", 12, "bold"), command=limpiar).grid(row=0, column=4, padx=5)
+    tk.Button(frame_botones, text="❌ Cerrar",font=("Segoe UI Emoji", 12, "bold"), command=ventana.destroy).grid(row=0, column=5, padx=5)
 
     # =========================
     # INICIO DE LA PANTALLA

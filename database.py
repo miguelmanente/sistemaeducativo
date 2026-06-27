@@ -96,7 +96,7 @@ def crear_tablas():
     /* ======================================================================= */
     CREATE TABLE IF NOT EXISTS asignacion (
         id_asignacion INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_profesor INTEGER,              -- Conecta con la tabla profesores
+        id_docente INTEGER,              -- Conecta con la tabla profesores
         id_materia INTEGER NULL,          -- Conecta con materias (puede ser NULL si es cargo fijo)
         dia TEXT,                        -- Lunes, Martes, etc.
         cargo TEXT,                  -- 'Módulos', 'Director', 'Preceptor', etc.
@@ -110,25 +110,17 @@ def crear_tablas():
         fecha_cese TEXT NULL,                    
         activo INTEGER DEFAULT 1,         -- 1 = Activo, 0 = Cesado (para historial)
         
-        FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor),
+        FOREIGN KEY (id_docente) REFERENCES profesores(id_docente),
         FOREIGN KEY (id_materia) REFERENCES materias(id_materia)
     );
                          
     CREATE TABLE IF NOT EXISTS inasistencia (
-        id_inasistencia INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_asignacion INTEGER NOT NULL,
-
-        f_desde TEXT NOT NULL,
-        f_hasta TEXT NOT NULL,
-
-        tot_dias_trab INTEGER,
-        cant_inasist INTEGER,
-                         
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_docente INTEGER,
+        fecha_desde TEXT,
+        fecha_hasta TEXT,
         motivo TEXT,
-        observacion TEXT,
-
-        FOREIGN KEY (id_asignacion)
-            REFERENCES asignacion(id_asignacion)
+        observacion TEXT
     );
                          
     """)

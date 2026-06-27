@@ -19,6 +19,8 @@ import sesion
 from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
 from parteDiario import abrir_parte_diario
+from inasistencia_v2 import InasistenciaDocente
+from altaInasistencias import abrir_inasistencias
 from inasistenciaDocente import abrir_inasistencia_docente
 """from listadoCursos import ventana_listado_curso
 from listadoTurnos import listado_personal_turnos
@@ -137,6 +139,7 @@ def pPrincipal():
     # Menú Asistencias Docentes
     mAsistencias = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Inasistencias Docentes", menu=mAsistencias)
+    mAsistencias.add_command(label="Cargar Inasistencias", command=InasistenciaDocente)
     mAsistencias.add_command(label="Inasistencias", command=abrir_inasistencia_docente)
     """mAsistencias.add_command(label="Ranking Inasistencias", command="ventana_ranking")
     mAsistencias.add_command(label="Estadisticas Docentes", command="ventana_estadisticas")

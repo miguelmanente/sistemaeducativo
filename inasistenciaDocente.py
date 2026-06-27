@@ -55,57 +55,111 @@ def abrir_inasistencia_docente():
         if not id_docente:
             return
 
-        cargar_asignaciones_tree(id_docente)
+        cargar_inasistencias_completo(id_docente)
 
 
-    def cargar_asignaciones_tree(id_docente):
+    #================ CARGA INASISTENSIAS ============================================
+    def cargar_inasistencias_completo(id_docente):
         conn = conectar()
         cursor = conn.cursor()
 
         # limpiar tabla
         for item in tabla.get_children():
             tabla.delete(item)
+
         cursor.execute("""
             SELECT
                 p.apellido || ' ' || p.nombre AS docente,
-
                 COALESCE(m.nombre, '') AS materia,
-
                 a.cargo,
                 a.modulos,
                 a.curso,
-                a.situacion_revista
+                a.situacion_revista,
+
+                i.fecha_desde,
+                i.fecha_hasta,
+                i.motivo,
+                '',
+                '',
+                i.observacion
 
             FROM asignacion a
             INNER JOIN profesores p ON a.id_docente = p.id_docente
             LEFT JOIN materias m ON a.id_materia = m.id_materia
+            LEFT JOIN inasistencia i ON i.id_docente = a.id_docente
+
             WHERE a.id_docente = ?
+            ORDER BY i.fecha_desde DESC
         """, (id_docente,))
 
         datos = cursor.fetchall()
-        for fila in datos:
-            docente, materia, cargo, mod, curso, situacion = fila
 
-            tabla.insert("", "end", values=(
-            docente,
-            materia,
-            cargo,
-            mod,
-            curso,
-            situacion,
-            "", "", "", "", "", ""
-        ))
+        for fila in datos:
+            tabla.insert("", "end", values=fila)
     # --------------------------------------------------------------------------------
 
+    # ========================== Agregar Inasistencias ===============================
+    def agregar_inasistencia():
+        conn = conectar()
+        cursor = conn.cursor()
 
+        nombre = cmb_docente.get()
+        id_docente = docentes_dict.get(nombre)
+
+        cursor.execute("""
+            INSERT INTO inasistencia
+            (id_docente, fecha_desde, fecha_hasta, motivo, observacion)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            id_docente,
+            txt_fecha_desde.get(),
+            txt_fecha_hasta.get(),
+            cmb_motivo.get(),
+            txt_observacion.get()
+        ))
+
+        conn.commit()
+        cargar_inasistencias_completo(id_docente)
+    # --------------------------------------------------------------------------------
+
+    #======================== Exportar a PDF =========================================
+    def generar_pdf():
+        from reportlab.pdfgen import canvas
+
+        nombre = cmb_docente.get()
+        id_docente = docentes_dict.get(nombre)
+
+        conn = conectar()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT fecha_desde, fecha_hasta, motivo, observacion
+            FROM inasistencia
+            WHERE id_docente = ?
+        """, (id_docente,))
+
+        datos = cursor.fetchall()
+
+        c = canvas.Canvas("inasistencias.pdf")
+
+        y = 800
+        c.drawString(200, 820, f"INASISTENCIAS DE {nombre}")
+
+        for d in datos:
+            texto = f"{d[0]} - {d[1]} | {d[2]} | {d[3]}"
+            c.drawString(50, y, texto)
+            y -= 20
+
+        c.save()
+    #---------------------------------------------------------------------------------
+
+    
     # -------------------------------------------------------------------------
     # ZONA SUPERIOR: FORMULARIO Y BOTONES
     # -------------------------------------------------------------------------
     style = ttk.Style()
-    style.configure("Valido.TEntry", foreground="black")
-    style.configure("Error.TEntry", foreground="black")
-    style.map("Error.TEntry",
-            fieldbackground=[("!disabled", "#ffcccc")])  # rojo claro
+    style.configure("TCombobox", font=("Arial", 12))
+    frame_superior.option_add("*TCombobox*Listbox.font", ("Arial", 12))
     
     frame_superior = ttk.LabelFrame(ventana_inasistencia, text=" Gestión de Inasistencias y Datos de Asignación ")
     frame_superior.pack(side="top", fill="x", padx=10, pady=5)
@@ -149,15 +203,15 @@ def abrir_inasistencia_docente():
     # -------------------------------------------------------------------------
     # BOTONES DE ACCIÓN Y RESTO DE LA INTERFAZ
     # -------------------------------------------------------------------------
-    frame_botones = ttk.Frame(frame_superior)
+    frame_botones = tk.Frame(frame_superior)
     frame_botones.grid(row=3, column=0, columnspan=4, pady=10)
 
     # (Mantenemos los mismos botones del diseño anterior...)
-    btn_agregar = ttk.Button(frame_botones, text="Agregar")
+    btn_agregar = tk.Button(frame_botones, text="💾 Agregar",font=("Segoe UI Emoji", 14, "bold"),command=agregar_inasistencia)
     btn_agregar.pack(side="left", padx=5)
-    btn_modificar = ttk.Button(frame_botones, text="Modificar")
+    btn_modificar = tk.Button(frame_botones, text="✏ Modificar",font=("Segoe UI Emoji", 14, "bold"))
     btn_modificar.pack(side="left", padx=5)
-    btn_eliminar = ttk.Button(frame_botones, text="Eliminar")
+    btn_eliminar = tk.Button(frame_botones, text="🗑 Eliminar",font=("Segoe UI Emoji", 14, "bold"))
     btn_eliminar.pack(side="left", padx=5)
     
     def limpiar_campos():
@@ -167,13 +221,14 @@ def abrir_inasistencia_docente():
         txt_fecha_desde.delete(0, tk.END)
         txt_fecha_hasta.insert('')
         cmb_motivo.set('')
+        txt_observacion('')
 
-    btn_limpiar = ttk.Button(frame_botones, text="Limpiar", command=limpiar_campos)
+    btn_limpiar = tk.Button(frame_botones, text="🧹 Limpiar",font=("Segoe UI Emoji", 14, "bold"), command=limpiar_campos)
     btn_limpiar.pack(side="left", padx=5)
     
-    btn_pdf = ttk.Button(frame_botones, text="Generar PDF")
+    btn_pdf = tk.Button(frame_botones, text="📄 Generar PDF",font=("Segoe UI Emoji", 14, "bold"))
     btn_pdf.pack(side="left", padx=5)
-    btn_cerrar = ttk.Button(frame_botones, text="Cerrar", command=ventana_inasistencia.destroy)
+    btn_cerrar = tk.Button(frame_botones, text="❌ Cerrar",font=("Segoe UI Emoji", 14, "bold"), command=ventana_inasistencia.destroy)
     btn_cerrar.pack(side="left", padx=5)
 
     # -------------------------------------------------------------------------

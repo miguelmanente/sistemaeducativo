@@ -405,10 +405,10 @@ def info_profesor():
     centrar_ventana(ventana)
     cargar_datos_treeview()
     # --------------------------- Botones que permiten agregar, modificar etc. ---------------------------
-    ttk.Button(frame_botones, text="Agregar", command=agregar_datos).grid(row=0, column=0, padx=5)
-    ttk.Button(frame_botones, text="Modificar", command=modificar_registro).grid(row=0, column=1, padx=5)
-    ttk.Button(frame_botones, text="Eliminar", command=eliminar_registro).grid(row=0, column=2, padx=5)
-    ttk.Button(frame_botones, text="Limpiar", command=limpiar_campos).grid(row=0, column=3, padx=5)
-    ttk.Button(frame_botones, text="Cerrar", command=ventana.destroy).grid(row=0, column=4, padx=5)
+    tk.Button(frame_botones, text="💾 Agregar",font=("Segoe UI Emoji", 12, "bold"), command=agregar_datos).grid(row=0, column=0, padx=5)
+    tk.Button(frame_botones, text="✏ Modificar",font=("Segoe UI Emoji", 12, "bold"), command=modificar_registro).grid(row=0, column=1, padx=5)
+    tk.Button(frame_botones, text="🗑 Eliminar",font=("Segoe UI Emoji", 12, "bold"), command=eliminar_registro).grid(row=0, column=2, padx=5)
+    tk.Button(frame_botones, text="🧹 Limpiar",font=("Segoe UI Emoji", 12, "bold"), command=limpiar_campos).grid(row=0, column=3, padx=5)
+    tk.Button(frame_botones, text="❌ Cerrar",font=("Segoe UI Emoji", 12, "bold"), command=ventana.destroy).grid(row=0, column=4, padx=5)
     # ----------------------------------------------------------------------------------------------------
   

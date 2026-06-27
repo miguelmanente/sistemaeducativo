@@ -341,14 +341,14 @@ def abrir_parte_diario():
     frame_botones = tk.Frame(ventana)
     frame_botones.pack(pady=10)
 
-    tk.Button(frame_botones, text="💾 Cargar", font=("Arial", 12),
+    tk.Button(frame_botones, text="💾 Cargar Planilla Diaria",font=("Segoe UI Emoji", 12, "bold"),
         command=lambda: cargar_parte_diario(tree, turno_var, dia_var, conn)).pack(side="left", padx=5)
 
-    tk.Button(frame_botones, text=" 📄Exportar PDF", font=("Arial", 12),
+    tk.Button(frame_botones, text=" 📄Exportar a PDF",font=("Segoe UI Emoji", 12, "bold"),
         command=lambda: exportar_pdf_pro_corregido(tree, dia_var, turno_var)       
     ).pack(side="left", padx=5)
 
-    tk.Button(frame_botones, text="❌ Cerrar", font=("Arial", 12),
+    tk.Button(frame_botones, text="❌ Cerrar",font=("Segoe UI Emoji", 12, "bold"),
         command=ventana.destroy).pack(side="left", padx=5)
 
     # =================================== INICIO ===========================================
