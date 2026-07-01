@@ -9,7 +9,6 @@ from tkinter import messagebox
 from PIL import Image, ImageTk
 from database import validar_usuario, crear_tablas  # ¡Agregá crear_tablas acá!
 from centraVent import centrar_ventana, cventana
-from database import validar_usuario
 from app import pPrincipal
 from registrar import ventana_registro
 import sesion  # muestra la variable del usuario conectado al sistema
@@ -38,12 +37,21 @@ def ventana_login(root, barramenu, lbl_usuario):
     tk.Label(login, text="Contraseña", bg="#ecf0f1", font=("Arial", 12, "bold")).pack(pady=15)
     entry_password = tk.Entry(login, show="*", font=("Arial", 12))
     entry_password.pack()
+    entry_password.bind("<Return>", lambda e: iniciar_sesion())
 
     def iniciar_sesion():
         global usuario_logueado
 
         usuario = entry_usuario.get()
         password = entry_password.get()
+
+        if not usuario.strip():
+            messagebox.showwarning("Advertencia", "Por favor, ingrese un nombre de usuario.", parent=login)
+            return
+
+        if not password:
+            messagebox.showwarning("Advertencia", "Por favor, ingrese una contraseña.", parent=login)
+            return
 
        # 1. Hacemos una única validación a la base de datos
         if validar_usuario(usuario, password):

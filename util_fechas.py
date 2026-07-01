@@ -39,3 +39,36 @@ def obtener_dias_trabajo(id_docente):
             dias.add(dia)
 
     return dias
+
+from datetime import datetime, timedelta
+
+def calcular_dias_trabajados(id_docente, fecha_desde, fecha_hasta):
+
+    dias_trabajo = obtener_dias_trabajo(id_docente)
+
+    fecha_ini = datetime.strptime(fecha_desde, "%d/%m/%Y")
+    fecha_fin = datetime.strptime(fecha_hasta, "%d/%m/%Y")
+
+    dias_semana = {
+        0: "Lunes",
+        1: "Martes",
+        2: "Miércoles",
+        3: "Jueves",
+        4: "Viernes",
+        5: "Sábado",
+        6: "Domingo"
+    }
+
+    contador = 0
+    actual = fecha_ini
+
+    while actual <= fecha_fin:
+
+        nombre_dia = dias_semana[actual.weekday()]
+
+        if nombre_dia in dias_trabajo:
+            contador += 1
+
+        actual += timedelta(days=1)
+
+    return contador

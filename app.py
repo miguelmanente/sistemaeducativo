@@ -157,8 +157,8 @@ def pPrincipal():
 
     # Cargar el logo
     try:
-        logo = Image.open("logos.png")  # Asegúrate de que el archivo esté en la misma carpeta
-        logo = logo.resize((600, 400))
+        logo = Image.open("LogoT3.png")  # Asegúrate de que el archivo esté en la misma carpeta
+        logo = logo.resize((400, 400))
         logo_tk = ImageTk.PhotoImage(logo)
 
         # Mostrar el logo
@@ -174,7 +174,7 @@ def pPrincipal():
     # Texto debajo del logo
     label_text = tk.Label(
         logoP,
-        text="Sistema Educativo - Gestión Escolar",
+        text="Sistema de Gestión Escolar",
         font=("Arial", 20, "bold")
     )
     label_text.pack(pady=(0,10))
