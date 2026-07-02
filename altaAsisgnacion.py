@@ -7,7 +7,7 @@ import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
-from database import conectar
+from database import conectar, existe_asignacion
 from centraVent import centrar_ventana
 from Backup import crear_backup
 from estilos import configurar_estilos
@@ -231,6 +231,26 @@ def info_asignaciones():
             conn = conectar()
             cursor = conn.cursor()
 
+            # Verificar si la asignación ya existe
+            if existe_asignacion(
+                    profesores_dict[profesor_var.get()],
+                    materia_dict.get(materia_var.get()),
+                    dia_var.get(),
+                    cargo_var.get(),
+                    modulos_var.get(),
+                    curso_var.get(),
+                    turno_var.get(),
+                    entrada_var.get(),
+                    salida_var.get()
+                ):
+            
+                messagebox.showwarning(
+                    "Asignación duplicada",
+                    "Esta asignación ya se encuentra registrada.",
+                    parent=ventana
+            )
+                return
+            
             cursor.execute("""
                 INSERT INTO asignacion(
                     id_docente,
@@ -393,43 +413,6 @@ def info_asignaciones():
     # -------------------------------------------------------------------------------------
 
     # ============================ SELECCIONAR REGISTRO EN EL TREEVIEW ====================
-    def on_tree_select(event):
-        # 🔥 Avisamos que vamos a modificar la variable que creamos arriba
-        nonlocal id_seleccionado 
-
-        seleccion = tree.selection()
-        if not seleccion:
-            return  
-
-        item = tree.item(seleccion[0])
-        valores = item["values"]
-
-        if valores:
-            # 🔥 ¡PASO CLAVE! Guardamos el ID de la asignación seleccionada
-            id_seleccionado = valores[0] 
-            
-            # (El resto de tus .set() quedan exactamente igual que antes...)
-            profesor_var.set(valores[1])
-            materia_var.set(valores[2])
-            if valores[2] == "---":
-                materia_var.set("")
-            dia_var.set(valores[3])
-            cargo_var.set(valores[4])
-            modulos_var.set(valores[5])
-            curso_var.set(valores[6])
-            turno_var.set(valores[7])
-            entrada_var.set(valores[8])
-            salida_var.set(valores[9])
-            situacion_var.set(valores[10])
-            toma_pos_var.set(valores[11])
-            fecha_cese_var.set(valores[12])
-            if valores[13] == "SÍ":
-                activo_var.set(1)
-            else:
-                activo_var.set(0)
-
-    tree.bind("<<TreeviewSelect>>", on_tree_select)
-    # -------------------------------------------------------------------------------------
     def on_tree_select(event):
         nonlocal id_seleccionado 
 

@@ -59,6 +59,76 @@ def validar_usuario(username, password):
     return usuario
 # ---------------------------- Fin función validación---------------------------------------------------
 
+# ========================Chequea duplicados en los registros ========================
+# ======================== Chequea duplicados en los registros ========================
+
+def existe_asignacion(id_docente, id_materia, dia, cargo,
+                      modulos, curso, turno,
+                      hentrada, hsalida):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    # -------------------------------------------------------------
+    # ASIGNACIÓN DOCENTE (Tiene materia)
+    # -------------------------------------------------------------
+    if id_materia is not None:
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM asignacion
+            WHERE id_docente = ?
+            AND id_materia = ?
+            AND dia = ?
+            AND cargo = ?
+            AND modulos = ?
+            AND curso = ?
+            AND turno = ?
+            AND hentrada = ?
+            AND hsalida = ?
+        """, (
+            id_docente,
+            id_materia,
+            dia,
+            cargo,
+            modulos,
+            curso,
+            turno,
+            hentrada,
+            hsalida
+        ))
+
+    # -------------------------------------------------------------
+    # CARGO INSTITUCIONAL (No tiene materia)
+    # -------------------------------------------------------------
+    else:
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM asignacion
+            WHERE id_docente = ?
+            AND cargo = ?
+            AND dia = ?
+            AND modulos = ?
+            AND turno = ?
+            AND hentrada = ?
+            AND hsalida = ?
+        """, (
+            id_docente,
+            cargo,
+            dia,
+            modulos,
+            turno,
+            hentrada,
+            hsalida
+        ))
+
+    existe = cursor.fetchone()[0] > 0
+
+    conn.close()
+
+    return existe
+# -------------------------------------------------------------------------------------
 
 #---------------------  CREAR Y VERIFICAR SI ESTÁN CREADAS LAS TABLAS ----------------
 def crear_tablas():
@@ -135,7 +205,9 @@ def crear_tablas():
             ('admin', clave_encriptada)
         )
         print("--> ¡Usuario administrador inicial creado con éxito!")
+    # -------------------------------------------------------------------------------
 
+    
 
     conn.commit()
     crear_backup()
