@@ -7,11 +7,12 @@ import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
-from database import conectar, existe_asignacion
+from database import conectar
 from centraVent import centrar_ventana
 from Backup import crear_backup
 from estilos import configurar_estilos
-
+from utilidades import normalizar_fecha, normalizar_hora
+from validaciones import existe_asignacion, hay_incompatibilidad_horaria, validar_fecha, validar_horario, validar_rango_fechas
 # Importaciones necesarias de ReportLab para el PDF
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
@@ -226,7 +227,90 @@ def info_asignaciones():
         if not profesor_var.get():
             messagebox.showwarning("Atención", "Complete todos los campos", parent=ventana)
             return
+        
+        # --------- Variables utilizadas para validacion de horas -----------
+        hentrada = normalizar_hora(entrada_var.get())
+        hsalida = normalizar_hora(salida_var.get())
+        toma_pos = normalizar_fecha(toma_pos_var.get())
+        fecha_cese = normalizar_fecha(fecha_cese_var.get())
 
+        # ----------------------- Validación de horas ----------------------
+        if hentrada is None or hsalida is None:
+            messagebox.showerror(
+            "Error",
+            "El formato de la hora debe ser HH:MM.",
+            parent=ventana)
+            return
+        
+        # ------------------- Validación de horario ------------------------
+        if not validar_horario(hentrada, hsalida):
+            messagebox.showerror(
+                "Error",
+                "La hora de entrada debe ser menor que la hora de salida.",
+                parent=ventana
+            )
+            return
+        
+         # -------------- Validación de incompatibilidad horaria --------------
+        if hay_incompatibilidad_horaria(
+                profesores_dict[profesor_var.get()],
+                dia_var.get(),
+                hentrada,
+                hsalida
+        ):
+            messagebox.showwarning(
+                "Incompatibilidad horaria",
+                "El docente ya posee una asignación en ese horario.",
+                parent=ventana
+            )
+            return
+            
+        # -------------- validación de fechas de toma de posesión   --------------
+        if toma_pos is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha de toma de posesión debe tener el formato DD/MM/AAAA.",
+                parent=ventana
+            )
+            return
+
+        # -------------- validación de fechas de cese   ------------------------
+        if fecha_cese_var.get().strip() != "" and fecha_cese is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese debe tener el formato DD/MM/AAAA.",
+                parent=ventana
+            )
+            return
+        
+        
+        # -------------- Validación de fechas de toma de posesión y cese --------------
+        if not validar_fecha(toma_pos):
+            messagebox.showerror(
+                "Error",
+                "La fecha de toma de posesión no es válida.",
+                parent=ventana
+            )
+            return
+
+        if fecha_cese and not validar_fecha(fecha_cese):
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese no es válida.",
+                parent=ventana
+            )
+            return
+        
+        # ------------------- validación de rangos de fechas ------------------------
+        if not validar_rango_fechas(toma_pos, fecha_cese):
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese no puede ser anterior a la fecha de toma de posesión.",
+                parent=ventana
+            )
+            return
+        # ----------------------------------------------------------------------------
+        
         try:
             conn = conectar()
             cursor = conn.cursor()
@@ -240,8 +324,8 @@ def info_asignaciones():
                     modulos_var.get(),
                     curso_var.get(),
                     turno_var.get(),
-                    entrada_var.get(),
-                    salida_var.get()
+                    hentrada,
+                    hsalida
                 ):
             
                 messagebox.showwarning(
@@ -275,11 +359,11 @@ def info_asignaciones():
                 modulos_var.get(),
                 curso_var.get(),
                 turno_var.get(),
-                entrada_var.get(),
-                salida_var.get(),
+                hentrada,
+                hsalida,
                 situacion_var.get(),
-                toma_pos_var.get(),
-                fecha_cese_var.get(),
+                toma_pos,
+                fecha_cese,
                 activo_var.get()
             ))
 
@@ -362,6 +446,82 @@ def info_asignaciones():
         conn = conectar()
         cursor = conn.cursor()
 
+        hentrada = normalizar_hora(entrada_var.get())
+        hsalida = normalizar_hora(salida_var.get())
+        toma_pos = normalizar_fecha(toma_pos_var.get())
+        fecha_cese = normalizar_fecha(fecha_cese_var.get())
+
+        if hentrada is None or hsalida is None:
+            messagebox.showerror(
+            "Error",
+            "El formato de la hora debe ser HH:MM.",
+            parent=ventana)
+            return
+        
+        if not validar_horario(hentrada, hsalida):
+            messagebox.showerror(
+                "Error",
+                "La hora de entrada debe ser menor que la hora de salida.",
+                parent=ventana
+            )
+            return
+        
+        if hay_incompatibilidad_horaria(
+                    id_doc,
+                    dia_var.get(),
+                    hentrada,
+                    hsalida,
+                    id_seleccionado
+            ):
+                messagebox.showwarning(
+                    "Incompatibilidad horaria",
+                    "El docente ya posee una asignación en ese horario.",
+                    parent=ventana
+                )
+                return
+        
+        # ------------- Validación de fechas de toma de posesión y cese --------------
+        if toma_pos is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha de toma de posesión no es válida (DD/MM/AAAA).",
+                parent=ventana
+            )
+            return
+
+        if fecha_cese_var.get().strip() != "" and fecha_cese is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese no es válida (DD/MM/AAAA).",
+                parent=ventana
+            )
+            return
+        
+        if not validar_fecha(toma_pos):
+            messagebox.showerror(
+                "Error",
+                "La fecha de toma de posesión no es válida.",
+                parent=ventana
+            )
+            return
+
+        if fecha_cese and not validar_fecha(fecha_cese):
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese no es válida.",
+                parent=ventana
+            )
+            return
+        
+        if not validar_rango_fechas(toma_pos, fecha_cese):
+            messagebox.showerror(
+                "Error",
+                "La fecha de cese no puede ser anterior a la toma de posesión.",
+                parent=ventana
+            )
+            return
+        # ----------------------------------------------------------------------------
+
         try:
             cursor.execute("""
                 UPDATE asignacion
@@ -388,11 +548,11 @@ def info_asignaciones():
                 modulos_var.get(),     # 5. modulos
                 curso_var.get(),       # 6. curso
                 turno_var.get(),       # 7. turno
-                entrada_var.get(),     # 8. hentrada
-                salida_var.get(),      # 9. hsalida
+                hentrada,              # 8. hentrada
+                hsalida,               # 9. hsalida
                 situacion_var.get(),   # 10. situacion_revista
-                toma_pos_var.get(),    # 11. toma_pos
-                fecha_cese_var.get(),  # 12. fecha_cese
+                toma_pos,              # 11. toma_pos
+                fecha_cese,            # 12. fecha_cese
                 activo_var.get(),      # 13. activo
                 id_seleccionado        # 14. WHERE id_asignacion
             ))
