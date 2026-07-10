@@ -16,19 +16,125 @@ Autor: Miguel Ángel Manente
 # ==========================================================
 from database import conectar
 from datetime import datetime
-
+import re
 # ==========================================================
 # VALIDACIONES DE DOCENTES
 # ==========================================================
-def validar_dni():
-    pass
 
-def dni_existente():
-    pass
+# ========================  Validar Apellidos y Nombres ==========================
+def validar_nombre(texto):
+    """
+    Permite:
+        Letras
+        Espacios
+        Tildes
+        Ñ
+        Apóstrofo
+        Guión
+    """
 
-def validar_cuil():
-    pass
+    if texto is None:
+        return False
 
+    texto = texto.strip()
+
+    patron = r"^[A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]+$"
+
+    return re.fullmatch(patron, texto) is not None
+# --------------------------------------------------------------------------------
+
+# ------------------- Chequea si el DNI es válido ----------------------------
+def validar_dni(dni, id_docente=None):
+    """
+    Valida un DNI argentino.
+
+    Retorna:
+        True  -> Si el DNI es válido.
+        False -> Si es inválido.
+    """
+
+    if dni is None:
+        return False
+
+    dni = dni.replace(".", "").replace("-", "").replace(" ", "")
+
+    if not dni.isdigit():
+        return False
+
+    if len(dni) < 7 or len(dni) > 8:
+        return False
+
+    return True
+
+# ------------- Chequea si el DNI ya existe en la base de datos -------------
+
+def dni_existente(dni, id_docente=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    if id_docente is None:
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM profesores
+            WHERE dni = ?
+        """, (dni,))
+    else:
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM profesores
+            WHERE dni = ?
+            AND id_docente <> ?
+        """, (dni, id_docente))
+
+    existe = cursor.fetchone()[0] > 0
+
+    conn.close()
+
+    return existe
+
+# ----------------------------------------------------------------------------
+
+# ========================= VALIDAR CUIL ===================================
+def validar_cuil(cuil):
+    """
+    Valida un CUIL argentino.
+
+    Retorna:
+        True  -> Si el CUIL es válido.
+        False -> Si es inválido.
+    """
+
+    if cuil is None:
+        return False
+
+    cuil = cuil.replace("-", "").replace(" ", "")
+
+    if not cuil.isdigit():
+        return False
+
+    if len(cuil) != 11:
+        return False
+
+    # Coeficientes oficiales
+    coeficientes = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
+
+    suma = 0
+
+    for i in range(10):
+        suma += int(cuil[i]) * coeficientes[i]
+
+    resto = suma % 11
+    verificador = 11 - resto
+
+    if verificador == 11:
+        verificador = 0
+    elif verificador == 10:
+        verificador = 9
+
+    return verificador == int(cuil[10])
+
+# --------------------------------------------------------------------------
 def cuil_existente():
     pass
 
@@ -135,13 +241,6 @@ def materia_existente():
 # VALIDACIONES DE CURSOS
 # ==========================================================
 
-
-# ==========================================================
-# VALIDACIONES DE HORARIOS
-# ==========================================================
-
-def validar_formato_hora():
-    pass
 
 # ==========================================================
 # VALIDACIONES DE HORARIOS

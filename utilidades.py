@@ -65,9 +65,38 @@ def minutos_a_hora():
 # ==========================================================
 # TEXTO
 # ==========================================================
+def normalizar_nombre(texto):
+    """
+    Normaliza nombres y apellidos.
 
-def normalizar_nombre():
-    pass
+    Ejemplos:
+        " juan"              -> "Juan"
+        "juan carlos"        -> "Juan Carlos"
+        "  maria   jose "    -> "Maria Jose"
+        "d'angelo"           -> "D'Angelo"
+    """
+
+    if texto is None:
+        return ""
+
+    texto = texto.strip()
+
+    # elimina espacios repetidos
+    texto = " ".join(texto.split())
+
+    palabras = []
+
+    for palabra in texto.split():
+
+        if "'" in palabra:
+            partes = palabra.split("'")
+            palabra = "'".join(p.capitalize() for p in partes)
+        else:
+            palabra = palabra.capitalize()
+
+        palabras.append(palabra)
+
+    return " ".join(palabras)
 
 def normalizar_apellido():
     pass
@@ -117,8 +146,221 @@ def normalizar_fecha(fecha):
     return f"{dia:02d}/{mes:02d}/{anio:04d}"
 # ---------------------------------------------------------------------------
 
+# ==============================================================================
+# NORMALIZACIÓN DE CUIL
+# ==============================================================================
+
+def normalizar_cuil(cuil):
+    """
+    Normaliza un CUIL al formato XX-XXXXXXXX-X.
+
+    Ejemplos:
+        "20123456783"   -> "20-12345678-3"
+        "20-12345678-3" -> "20-12345678-3"
+        "20 12345678 3" -> "20-12345678-3"
+
+    Retorna:
+        str  -> CUIL normalizado.
+        None -> Si no puede interpretarse.
+    """
+
+    if cuil is None:
+        return None
+
+    cuil = cuil.strip()
+
+    # Campo opcional vacío
+    if cuil == "":
+        return ""
+
+    # Eliminar espacios y guiones
+    cuil = cuil.replace("-", "").replace(" ", "")
+
+    # Deben quedar exactamente 11 dígitos
+    if not cuil.isdigit() or len(cuil) != 11:
+        return None
+
+    return f"{cuil[:2]}-{cuil[2:10]}-{cuil[10]}"
+#---------------------------------------------------------------------------
+
+#======================= GENERAR CUIL AUTOMATICO ===========================
+def generar_cuil(dni, prefijo="20"):
+    """
+    Genera un CUIL válido a partir de un DNI.
+
+    Parámetros:
+        dni  : str o int
+        sexo : "M" (Masculino) o "F" (Femenino)
+
+    Retorna:
+        str -> CUIL válido con formato XX-XXXXXXXX-X
+        None -> Si el DNI es inválido
+    """
+
+    dni = str(dni).replace(".", "").strip()
+
+    if not dni.isdigit():
+        return None
+
+    if len(dni) not in (7, 8):
+        return None
+
+    # Completa con cero si tiene 7 dígitos
+    dni = dni.zfill(8)
+
+    #prefijo = "20" if sexo.upper() == "M" else "27"
+
+    base = prefijo + dni
+
+    coeficientes = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
+
+    suma = sum(int(d) * c for d, c in zip(base, coeficientes))
+
+    resto = suma % 11
+    verificador = 11 - resto
+
+    if verificador == 11:
+        verificador = 0
+    elif verificador == 10:
+        # Regla especial
+        if prefijo == "20":
+            prefijo = "23"
+        elif prefijo == "27":
+            prefijo = "23"
+
+        base = prefijo + dni
+        suma = sum(int(d) * c for d, c in zip(base, coeficientes))
+        resto = suma % 11
+        verificador = 11 - resto
+
+        if verificador == 11:
+            verificador = 0
+
+    return f"{prefijo}-{dni}-{verificador}"
+#---------------------------------------------------------------------------
+
+# ======================== NORMALIZACIÓN DE TELÉFONO ===========================
+def normalizar_telefono(telefono):
+    """
+    Normaliza un teléfono al formato 0336-1234567.
+
+    Acepta:
+        03361234567
+        0336-1234567
+        0336 1234567
+
+    Retorna:
+        str -> Teléfono normalizado.
+        None -> Si no puede interpretarse.
+    """
+
+    if telefono is None:
+        return None
+
+    telefono = telefono.strip()
+
+    telefono = telefono.replace("-", "")
+    telefono = telefono.replace(" ", "")
+
+    if not telefono.isdigit():
+        return None
+
+    if len(telefono) != 11:
+        return None
+
+    return f"{telefono[:4]}-{telefono[4:]}"
+# ---------------------------------------------------------------------------
+
 def generar_periodo():
     pass
 
 def calcular_dias_trabajados():
     pass
+
+# ========================= Da formato all dni para mostrarlo ==========================
+def formatear_dni(dni):
+    """
+    Formatea un DNI para mostrar.
+
+    Ejemplos:
+        12345678 -> 12.345.678
+        6543210  -> 6.543.210
+    """
+
+    if dni is None:
+        return ""
+
+    dni = str(dni).strip()
+
+    if not dni.isdigit():
+        return dni
+
+    return f"{int(dni):,}".replace(",", ".")
+#------------------------------------------------------------------------------
+
+# ==========================================================
+# FORMATEO DE CUIL
+# ==========================================================
+
+def formatear_cuil(cuil):
+    """
+    Formatea un CUIL para mostrar.
+
+    Ejemplos:
+        20123456783  -> 20-12345678-3
+        20-12345678-3 -> 20-12345678-3
+    """
+
+    if cuil is None:
+        return ""
+
+    cuil = str(cuil).strip()
+
+    if cuil == "":
+        return ""
+
+    # Eliminar cualquier separador existente
+    cuil = cuil.replace("-", "").replace(" ", "")
+
+    # Si no son 11 dígitos, devolver el valor original
+    if not cuil.isdigit() or len(cuil) != 11:
+        return cuil
+
+    return f"{cuil[:2]}-{cuil[2:10]}-{cuil[10]}"
+#-----------------------------------------------------------------------------
+
+# ===================== FORMATEO DE TELEFONO =================================
+def formatear_telefono(telefono):
+    """
+    Devuelve el teléfono listo para mostrar.
+
+    Si está vacío o es None devuelve una cadena vacía.
+    """
+
+    if telefono is None:
+        return ""
+
+    telefono = str(telefono).strip()
+
+    if telefono == "":
+        return ""
+
+    return telefono
+#-----------------------------------------------------------------------------
+
+# ======================== FORMATEO DE FECHAS ================================
+def formatear_fecha(fecha):
+    """
+    Devuelve una fecha lista para mostrar.
+    """
+
+    if fecha is None:
+        return ""
+
+    fecha = str(fecha).strip()
+
+    if fecha == "":
+        return ""
+
+    return fecha
+#-----------------------------------------------------------------------------

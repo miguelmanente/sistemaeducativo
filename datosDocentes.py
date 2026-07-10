@@ -11,6 +11,9 @@ from database import conectar
 from centraVent import centrar_ventana
 from estilos import configurar_estilos
 from Backup import crear_backup
+from validaciones import dni_existente, validar_cuil, validar_dni, validar_email, validar_nombre
+
+from utilidades import formatear_cuil, normalizar_nombre,normalizar_telefono, formatear_telefono, normalizar_cuil, formatear_dni, formatear_fecha, generar_cuil, normalizar_fecha
 
 # ----------- Función que maneja toda la ventana datos personales del profesor ------------
 def info_profesor():
@@ -72,7 +75,7 @@ def info_profesor():
 
     ttk.Label(frame_superior, text="CUIL:").grid(row=1, column=2, sticky="e", padx=5, pady=5)
     ttk.Entry(frame_superior, textvariable=cuil, font=("Arial", 12)).grid(row=1, column=3, sticky="ew", padx=5, pady=5)
-
+    
     ttk.Label(frame_superior, text="Teléfono:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
     ttk.Entry(frame_superior, textvariable=telefono, font=("Arial", 12)).grid(row=2, column=1, sticky="ew", padx=5, pady=5)
 
@@ -159,7 +162,7 @@ def info_profesor():
         entry.config(style="Valido.TEntry")
     # --------------------------------------------------------------------------------
     
-    #--------------- Validación de dni ---------------------------------------------
+      #--------------- Validación de dni ---------------------------------------------
     def validar_dni(dni):
          return dni.isdigit() and len(dni) in (7, 8)
    
@@ -173,7 +176,7 @@ def info_profesor():
 
     entry_dni.bind("<KeyRelease>", validar_dni_evento)
     #-------------------------------------------------------------------------------
-    
+       
     # ----------------------- Validación de correo electrónico ------------------------
     def validar_email(valor):
         patron = r'^[\w\.-]+@[\w\.-]+\.\w+$'
@@ -234,6 +237,12 @@ def info_profesor():
         """)
 
         for fila in cursor.fetchall():
+            #tree.insert("", "end", values=fila)
+            fila = list(fila)
+            #fila[3] = formatear_dni(fila[3])   # 3 es la posición del DNI
+            fila[4] = formatear_cuil(fila[4])    # CUIL
+            fila[5] = formatear_telefono(fila[5])
+            fila[8] = formatear_fecha(fila[8])
             tree.insert("", "end", values=fila)
 
         conn.close()
@@ -241,7 +250,7 @@ def info_profesor():
 
     # ------------------------ Añade registros nuevos a la BD profesores ---------------
     def agregar_datos():
-        if not apellido.get() or not dni.get():
+        if not apellido.get() or not dni.get() or not nombre.get():
             messagebox.showwarning(
                 "Campos obligatorios",
                 "Apellido y Nombres y DNI son obligatorios.", parent=ventana)
@@ -252,11 +261,80 @@ def info_profesor():
             messagebox.showerror("Error", "DNI inválido (solo números, 7 u 8 dígitos)", parent=ventana)
             return
 
+        dni_texto = dni.get().strip()
+        if dni_existente(dni_texto):
+            messagebox.showwarning(
+                "Error",
+                "El DNI ya está registrado", parent=ventana
+            )
+            return
+
         # ✅ VALIDAR EMAIL (solo si hay algo cargado)
         if email.get() and not validar_email(email.get()):
             messagebox.showerror("Error", "Email inválido", parent=ventana)
             return
         
+        cuil_normalizado = normalizar_cuil(cuil.get().strip())
+        # verifica que el CUIL tenga 11 dígitos
+        if cuil_normalizado is None:
+            messagebox.showerror(
+                "Error",
+                "El CUIL debe tener 11 dígitos.",
+                parent=ventana
+            )
+            return
+        
+        # valida el cuil
+        if not validar_cuil(cuil_normalizado):
+            messagebox.showerror(
+                "Error",
+                "El CUIL ingresado no es válido.",
+                parent=ventana
+            )
+            return
+        
+        # --------------------- Validación de teléfono ---------------------------------------
+        telefono_normalizado = normalizar_telefono(telefono.get())
+        if telefono_normalizado is None:
+            messagebox.showerror(
+                "Error",
+                "El teléfono ingresado no es válido.",
+                parent=ventana
+            )
+            return
+        # ------------------------------------------------------------------------------------
+        
+        # --------------------- Validación de fecha de nacimiento -----------------------------
+        fecha_normalizada = normalizar_fecha(fecha_nacimiento.get())
+        if fecha_normalizada is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha debe tener el formato DD/MM/AAAA.",
+                parent=ventana
+            )
+            return
+        # ----------------------------------------------------------------------------------
+
+        #--------------------- Validación de nombre y apellido ---------------------------------
+        apellido_normalizado = normalizar_nombre(apellido.get())
+        nombre_normalizado = normalizar_nombre(nombre.get())
+        if not validar_nombre(apellido_normalizado):
+            messagebox.showerror(
+                "Error",
+                "Apellido inválido.",
+                parent=ventana
+            )
+            return
+
+        if not validar_nombre(nombre_normalizado):
+            messagebox.showerror(
+                "Error",
+                "Nombre inválido.",
+                parent=ventana
+            )
+            return
+        # -------------------------------------------------------------------------------------
+
         try:
             conn = conectar()
             cursor = conn.cursor()
@@ -265,14 +343,14 @@ def info_profesor():
                 INSERT INTO profesores (apellido, nombre, dni, cuil, telefono, email, direccion, fecha_nacimiento)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                apellido.get(),
-                nombre.get(),
+                apellido_normalizado,
+                nombre_normalizado,
                 dni.get(),
-                cuil.get(),
-                telefono.get(),
+                cuil_normalizado,
+                telefono_normalizado,
                 email.get(),
                 direccion.get(),
-                fecha_nacimiento.get()
+                fecha_normalizada
             ))
 
             conn.commit()
@@ -281,7 +359,6 @@ def info_profesor():
             messagebox.showinfo("Éxito", "Datos guardados correctamente.", parent=ventana)
 
             cargar_datos_treeview()
-           
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudieron guardar los datos:\n{e}", parent=ventana)
@@ -296,19 +373,101 @@ def info_profesor():
         conn = conectar()
         cursor = conn.cursor()
 
+         
+         # ✅ VALIDAR DNI
+        if not validar_dni(dni.get()):
+            messagebox.showerror("Error", "DNI inválido (solo números, 7 u 8 dígitos)", parent=ventana)
+            return
+
+        dni_texto = dni.get().strip()
+        if dni_existente(dni_texto, id_seleccionado):
+            messagebox.showwarning(
+                "Error",
+                "El DNI ya está registrado", parent=ventana
+            )
+            return
+
+        # ------------- VALIDAR EMAIL (solo si hay algo cargado) -------------------
+        if email.get() and not validar_email(email.get()):
+            messagebox.showerror("Error", "Email inválido", parent=ventana)
+            return
+        # --------------------------------------------------------------------------
+
+        # ------------------------ Validación de CUIL ----------------------------------------
+        cuil_normalizado = normalizar_cuil(cuil.get().strip())
+        # verifica que el CUIL tenga 11 dígitos
+        if cuil_normalizado is None:
+            messagebox.showerror(
+                "Error",
+                "El CUIL debe tener 11 dígitos.",
+                parent=ventana
+            )
+            return
+      
+        if not validar_cuil(cuil_normalizado):
+            messagebox.showerror(
+                "Error",
+                "El CUIL ingresado no es válido.",
+                parent=ventana
+            )
+            return
+        # -------------------------------------------------------------------------------------
+        
+         # --------------------- Validación de teléfono ---------------------------------------
+        telefono_normalizado = normalizar_telefono(telefono.get())
+        if telefono_normalizado is None:
+            messagebox.showerror(
+                "Error",
+                "El teléfono ingresado no es válido.",
+                parent=ventana
+            )
+            return
+        # ------------------------------------------------------------------------------------
+        
+        # --------------------- Validación de fecha de nacimiento -----------------------------
+        fecha_normalizada = normalizar_fecha(fecha_nacimiento.get())
+        if fecha_normalizada is None:
+            messagebox.showerror(
+                "Error",
+                "La fecha debe tener el formato DD/MM/AAAA.",
+                parent=ventana
+            )
+            return
+        # ----------------------------------------------------------------------------------
+        
+        #--------------------- Validación de nombre y apellido ---------------------------------
+        apellido_normalizado = normalizar_nombre(apellido.get())
+        nombre_normalizado = normalizar_nombre(nombre.get())
+        if not validar_nombre(apellido_normalizado):
+            messagebox.showerror(
+                "Error",
+                "Apellido inválido.",
+                parent=ventana
+            )
+            return
+
+        if not validar_nombre(nombre_normalizado):
+            messagebox.showerror(
+                "Error",
+                "Nombre inválido.",
+                parent=ventana
+            )
+            return
+        # -------------------------------------------------------------------------------------
+
         cursor.execute("""
             UPDATE profesores
             SET apellido = ?, nombre = ?, dni = ?, cuil = ?, telefono = ?, email = ?, direccion = ?, fecha_nacimiento = ?
             WHERE id_docente = ?
         """, (
-            apellido.get(),
-            nombre.get(),
+            apellido_normalizado,
+            nombre_normalizado,
             dni.get(),
-            cuil.get(),
-            telefono.get(),
+            cuil_normalizado,
+            telefono_normalizado,
             email.get(),
             direccion.get(),
-            fecha_nacimiento.get(),
+            fecha_normalizada,
             id_seleccionado
         ))
 
@@ -318,6 +477,35 @@ def info_profesor():
         cargar_datos_treeview()
         limpiar_campos()
         messagebox.showinfo("Éxito", "Registro actualizado", parent=ventana)
+    # -------------------------------------------------------------------------------------
+
+    # ----------------  Genera CUIL a partir del DNI ----------------------------------
+    def generar_cuil_desde_boton():
+
+        dni_texto = dni.get().strip()
+
+        if not validar_dni(dni_texto):
+            messagebox.showerror(
+                "Error",
+                "Primero ingrese un DNI válido.",
+                parent=ventana
+            )
+            return
+
+        # Ventana para elegir el prefijo
+        respuesta = messagebox.askyesno(
+            "Generar CUIL",
+            "¿El docente es masculino?\n\n"
+            "Sí = Prefijo 20\n"
+            "No = Prefijo 27",
+            parent=ventana
+        )
+
+        prefijo = "20" if respuesta else "27"
+
+        cuil_generado = generar_cuil(dni_texto, prefijo)
+
+        cuil.set(cuil_generado)
     # -------------------------------------------------------------------------------------
 
     # ----------------  Elimina registros de profesores ----------------------------------
@@ -410,5 +598,6 @@ def info_profesor():
     tk.Button(frame_botones, text="🗑 Eliminar",font=("Segoe UI Emoji", 12, "bold"), command=eliminar_registro).grid(row=0, column=2, padx=5)
     tk.Button(frame_botones, text="🧹 Limpiar",font=("Segoe UI Emoji", 12, "bold"), command=limpiar_campos).grid(row=0, column=3, padx=5)
     tk.Button(frame_botones, text="❌ Cerrar",font=("Segoe UI Emoji", 12, "bold"), command=ventana.destroy).grid(row=0, column=4, padx=5)
+    tk.Button(frame_superior, text="🔄 Generar CUIL",font=("Segoe UI Emoji", 12, "bold"), command=generar_cuil_desde_boton).grid(row=1, column=4, padx=5)  
     # ----------------------------------------------------------------------------------------------------
   
