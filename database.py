@@ -121,6 +121,15 @@ def crear_tablas():
         motivo TEXT,
         observacion TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS calendario_escolar (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        dia_semana TEXT NOT NULL,
+        es_habil INTEGER DEFAULT 1,
+        es_feriado INTEGER DEFAULT 0,
+        descripcion TEXT
+    );
                          
     """)
 

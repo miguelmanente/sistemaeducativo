@@ -14,6 +14,7 @@ from registrar import ventana_registro
 import sesion  # muestra la variable del usuario conectado al sistema
 from Backup import crear_backup
 from estilos import configurar_estilos
+from negocio.calendario_escolar import generar_calendario
 
 
 # ------------------------------------------------ VARIABLE GLOBAL ----------------------------------------
@@ -192,6 +193,7 @@ lbl_logo.image = logo
 
 # ---------------- INICIAR LOGIN AUTOMÁTICO ---------------------------------------------------------------------------
 ventana_login(root, barramenu, lbl_usuario)
+generar_calendario(2026)  # Genera el calendario del año actual
 crear_backup()
 centrar_ventana(root)
 # ---------------------------------------------------------------------------------------------------------------------
