@@ -130,6 +130,13 @@ def crear_tablas():
         es_feriado INTEGER DEFAULT 0,
         descripcion TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS ciclo_lectivo (
+        anio INTEGER PRIMARY KEY,
+        fecha_inicio TEXT NOT NULL,
+        fecha_fin TEXT NOT NULL,
+        observacion TEXT
+    );
                          
     """)
 
