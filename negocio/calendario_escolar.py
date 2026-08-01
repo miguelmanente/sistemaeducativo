@@ -13,7 +13,6 @@
 from datetime import date, timedelta
 from datetime import datetime
 from database import conectar
-from utilidades.fechas import fecha_a_bd, fecha_a_pantalla
 
 #============================== GENERAR CALENDARIO =====================================
 def generar_calendario(anio):
@@ -144,8 +143,8 @@ def obtener_ciclo_lectivo(anio):
         return None
 
     return {
-        "fecha_inicio": fecha_a_pantalla(resultado[0]),
-        "fecha_fin": fecha_a_pantalla(resultado[1])
+        "fecha_inicio": resultado[0],
+        "fecha_fin": resultado[1]
     }
 #---------------------------------------------------------------------------------
 
@@ -164,10 +163,11 @@ def guardar_ciclo_lectivo(anio, fecha_inicio, fecha_fin, observacion=""):
         WHERE anio = ?
     """, (anio,))
 
-    fecha_inicio = fecha_a_bd(fecha_inicio)
-    fecha_fin = fecha_a_bd(fecha_fin)
+    fecha_inicio = (fecha_inicio)
+    fecha_fin = (fecha_fin)
 
     existe = cursor.fetchone()[0]
+
 
     if existe:
 
@@ -246,6 +246,55 @@ def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
     return cantidad
 # --------------------------------------------------------------------------------------
 
+# ============================================================
+# Cuenta la cantidad de días hábiles de un determinado día
+# de la semana entre dos fechas.
+#
+# Parámetros:
+#   dia_semana  -> "Lunes", "Martes", etc.
+#   fecha_inicio -> YYYY-MM-DD
+#   fecha_fin    -> YYYY-MM-DD
+#
+# Devuelve:
+#   int
+# ============================================================
+
+def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM calendario_escolar
+        WHERE fecha BETWEEN ? AND ?
+          AND dia_semana = ?
+          AND es_habil = 1
+          AND es_feriado = 0
+    """, (
+        fecha_inicio,
+        fecha_fin,
+        dia_semana
+    ))
+
+    cantidad = cursor.fetchone()[0]
+
+    conn.close()
+
+    return cantidad
+#--------------------------------------------------------------------------------------
+
 if __name__ == "__main__":
-    pass
+    
+    print()
+
+    print("Miércoles hábiles:")
+
+    print(
+        contar_dias_semana(
+            "Miércoles",
+            "2026-02-24",
+            "2026-12-18"
+        )
+    )
     

@@ -22,6 +22,7 @@ from parteDiario import abrir_parte_diario
 from inasistencia_v2 import InasistenciaDocente
 from altaInasistencias import abrir_inasistencias
 from inasistenciaDocente import abrir_inasistencia_docente
+
 """from listadoCursos import ventana_listado_curso
 from listadoTurnos import listado_personal_turnos
 from historialDocente import ventana_historial

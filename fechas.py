@@ -5,6 +5,7 @@
 
 from datetime import datetime
 
+
 # ========================= FORMATO YYYY-MM-DD =========================
 def fecha_a_bd(fecha):
     """
