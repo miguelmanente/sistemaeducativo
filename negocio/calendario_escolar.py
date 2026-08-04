@@ -246,42 +246,6 @@ def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
     return cantidad
 # --------------------------------------------------------------------------------------
 
-# ============================================================
-# Cuenta la cantidad de días hábiles de un determinado día
-# de la semana entre dos fechas.
-#
-# Parámetros:
-#   dia_semana  -> "Lunes", "Martes", etc.
-#   fecha_inicio -> YYYY-MM-DD
-#   fecha_fin    -> YYYY-MM-DD
-#
-# Devuelve:
-#   int
-# ============================================================
-
-def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM calendario_escolar
-        WHERE fecha BETWEEN ? AND ?
-          AND dia_semana = ?
-          AND es_habil = 1
-          AND es_feriado = 0
-    """, (
-        fecha_inicio,
-        fecha_fin,
-        dia_semana
-    ))
-
-    cantidad = cursor.fetchone()[0]
-
-    conn.close()
-
-    return cantidad
 #--------------------------------------------------------------------------------------
 
 if __name__ == "__main__":

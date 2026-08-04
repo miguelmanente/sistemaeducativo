@@ -1,16 +1,5 @@
-from negocio.motor_inasistencias import analizar_cargo, obtener_asignaciones_docente
-from negocio.motor_inasistencias import (
-    obtener_asignaciones_docente,
-    separar_asignaciones
-)
-asignaciones = obtener_asignaciones_docente(2)
+from pprint import pprint
 
-cargos, modulos = separar_asignaciones(asignaciones)
+from negocio.motor_inasistencias import resumen_docente
 
-print("CARGOS")
-print(cargos)
-
-print()
-
-print("MODULOS")
-print(modulos)
+pprint(resumen_docente(2, 2026))
