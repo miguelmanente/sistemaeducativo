@@ -461,6 +461,13 @@ def resumen_docente(id_docente, anio):
 
     cargos, modulos = separar_asignaciones(asignaciones)
 
+    docente = obtener_docente(id_docente)
+
+    inasistencias = obtener_inasistencias_docente(
+    id_docente,
+    anio
+)
+
     # --------------------------------------------------------
     # Inasistencias del año
     # --------------------------------------------------------
@@ -471,10 +478,15 @@ def resumen_docente(id_docente, anio):
     )
 
     resumen = {
+
+        "docente": docente,
         "id_docente": id_docente,
         "anio": anio,
+
         "cargos": [],
-        "modulos": []
+        "modulos": [],
+        "inasistencias": inasistencias
+
     }
 
     # ========================================================
@@ -498,11 +510,9 @@ def resumen_docente(id_docente, anio):
         resumen["cargos"].append({
 
             "cargo": cargo["cargo"],
-
+            "situacion_revista": cargo["situacion_revista"],
             "dias_ciclo": dias_ciclo,
-
             "dias_perdidos": dias_perdidos,
-
             "dias_trabajados": dias_ciclo - dias_perdidos
 
         })
@@ -532,13 +542,10 @@ def resumen_docente(id_docente, anio):
         resumen["modulos"].append({
 
             "materia": modulo["materia"],
-
+            "situacion_revista": modulo["situacion_revista"],
             "curso": modulo["curso"],
-
             "modulos_ciclo": modulos_ciclo,
-
             "modulos_perdidos": modulos_perdidos,
-
             "modulos_trabajados": modulos_ciclo - modulos_perdidos
 
         })
@@ -546,7 +553,39 @@ def resumen_docente(id_docente, anio):
     return resumen
 # ---------------------------------------------------------------------------
 
+# ============================================================
+# OBTENER DATOS DEL DOCENTE
+# ============================================================
 
+def obtener_docente(id_docente):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            apellido,
+            nombre,
+            dni,
+            cuil
+        FROM profesores
+        WHERE id_docente = ?
+    """, (id_docente,))
+
+    fila = cursor.fetchone()
+
+    conn.close()
+
+    if fila is None:
+        return None
+
+    return {
+        "apellido": fila[0],
+        "nombre": fila[1],
+        "dni": fila[2],
+        "cuil": fila[3]
+    }
+# -----------------------------------------------------------------------------
 
 
 # ====================== INICIO DE PRUEBAS ======================

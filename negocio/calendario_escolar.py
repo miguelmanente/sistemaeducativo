@@ -67,7 +67,7 @@ def generar_calendario(anio):
     conn.commit()
     conn.close()
 
-    print(f"Calendario {anio} generado correctamente.")
+    
 # ------------------------------------------------------------------------------
 
 #============================== DÍA HÁBIL =====================================

@@ -20,17 +20,8 @@ from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
 from parteDiario import abrir_parte_diario
 from inasistencia_v2 import InasistenciaDocente
-from altaInasistencias import abrir_inasistencias
-from inasistenciaDocente import abrir_inasistencia_docente
+from resumen_inasistencias import ventana_resumen
 
-"""from listadoCursos import ventana_listado_curso
-from listadoTurnos import listado_personal_turnos
-from historialDocente import ventana_historial
-from asistenciaDocente import ventana_asistencias
-from rankingAusentismo import ventana_ranking
-from estadisticasDocentes import ventana_estadisticas
-
-"""
 
 #Código - Zona de funciones
 #Crea la tablas de la BD si no están creadas
@@ -123,7 +114,7 @@ def pPrincipal():
 
     #Menú Trayectoria Docente
     mAsignaciones = tk.Menu(barramenu, tearoff=0)
-    barramenu.add_cascade(label="Historisal Docente", menu=mAsignaciones)
+    barramenu.add_cascade(label="Historial Docente", menu=mAsignaciones)
     mAsignaciones.add_command(label="Visualizar Trayactorias", command=abrir_trayectoria_docente)
 
     #Menú Listados de profesores
@@ -140,8 +131,8 @@ def pPrincipal():
     # Menú Asistencias Docentes
     mAsistencias = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Inasistencias Docentes", menu=mAsistencias)
-    mAsistencias.add_command(label="Cargar Inasistencias", command=InasistenciaDocente)
-    mAsistencias.add_command(label="Inasistencias", command=abrir_inasistencia_docente)
+    mAsistencias.add_command(label="Altas Inasistencias", command=InasistenciaDocente)
+    mAsistencias.add_command(label="Resumen Inasistencias Docente", command=ventana_resumen)
     """mAsistencias.add_command(label="Ranking Inasistencias", command="ventana_ranking")
     mAsistencias.add_command(label="Estadisticas Docentes", command="ventana_estadisticas")
     """
