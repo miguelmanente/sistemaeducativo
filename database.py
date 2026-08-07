@@ -137,6 +137,15 @@ def crear_tablas():
         fecha_fin TEXT NOT NULL,
         observacion TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS dias_no_laborables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        anio INTEGER NOT NULL,
+        fecha TEXT NOT NULL,
+        tipo TEXT NOT NULL,
+        descripcion TEXT,
+        UNIQUE(anio, fecha)
+    );
                          
     """)
 
