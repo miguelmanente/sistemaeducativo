@@ -339,11 +339,65 @@ def analizar_inasistencia(id_inasistencia):
     return resultado
 # ------------------------------------------------------------------------------
 
+# ============================================================
+# Verifica si una fecha es un día no laborable
+# ============================================================
+
+def es_dia_no_laborable(fecha, anio):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 1
+        FROM dias_no_laborables
+        WHERE anio = ?
+        AND fecha = ?
+        LIMIT 1
+    """, (anio, fecha))
+
+    resultado = cursor.fetchone()
+
+    conn.close()
+
+    return resultado is not None
+# ------------------------------------------------------------------------------
+
+# ============================================================
+# Obtener días no laborables de un año
+# ============================================================
+
+def obtener_dias_no_laborables(anio):
+
+    conn = conectar()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            anio,
+            fecha,
+            tipo,
+            descripcion
+        FROM dias_no_laborables
+        WHERE anio = ?
+        ORDER BY fecha
+    """, (anio,))
+
+    filas = cursor.fetchall()
+
+    conn.close()
+
+    return [dict(fila) for fila in filas]
+#------------------------------------------------------------------------------
+
+
 # ==============================================================================
-#               Calcula los módulos totales del ciclo lectivo
+# Calcula los módulos totales del ciclo lectivo
+# excluyendo los días no laborables
 # ==============================================================================
 def calcular_modulos_ciclo_lectivo(modulo):
-
     conn = conectar()
     cursor = conn.cursor()
 
@@ -363,24 +417,39 @@ def calcular_modulos_ciclo_lectivo(modulo):
     fecha_inicio = ciclo[0]
     fecha_fin = ciclo[1]
 
-    dias = dias_habiles_entre(fecha_inicio, fecha_fin)
+    # Obtener los días lunes a viernes del ciclo
+    dias = dias_habiles_entre(
+        fecha_inicio,
+        fecha_fin
+    )
 
     cantidad_clases = 0
 
     for fecha in dias:
 
-        fecha_dt = datetime.strptime(fecha, "%d/%m/%Y")
+        fecha_dt = datetime.strptime(
+            fecha,
+            "%d/%m/%Y"
+        )
 
+        # Verificar si el día corresponde a la asignación
         if nombre_dia(fecha_dt) == modulo["dia"]:
-            cantidad_clases += 1
 
- 
+            # Verificar si el día es laborable
+            if not es_dia_no_laborable(
+                fecha,
+                fecha_dt.year
+            ):
+                cantidad_clases += 1
+
     return cantidad_clases * int(modulo["modulos"])
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # ============================================================
 # Calcula los días hábiles del ciclo lectivo
+# excluyendo los días no laborables registrados
 # ============================================================
+
 def calcular_dias_ciclo_lectivo():
 
     conn = conectar()
@@ -402,9 +471,27 @@ def calcular_dias_ciclo_lectivo():
     fecha_inicio = ciclo[0]
     fecha_fin = ciclo[1]
 
-    dias = dias_habiles_entre(fecha_inicio, fecha_fin)
+    # Obtener todos los días lunes a viernes
+    dias = dias_habiles_entre(
+        fecha_inicio,
+        fecha_fin
+    )
 
-    return len(dias)
+    # Filtrar los días no laborables
+    dias_laborables = []
+
+    for fecha in dias:
+
+        if not es_dia_no_laborable(
+            fecha,
+            datetime.strptime(
+                fecha,
+                "%d/%m/%Y"
+            ).year
+        ):
+            dias_laborables.append(fecha)
+
+    return len(dias_laborables)
 # ------------------------------------------------------------------------------
 
 # ============================================================

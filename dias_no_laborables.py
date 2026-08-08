@@ -13,189 +13,7 @@ from negocio.motor_inasistencias import obtener_dias_no_laborables
 # ============================================================
 # VENTANA
 # ============================================================
-# ============================================================
-# Cargar registros en el Treeview
-# ============================================================
 
-def cargar_dias_no_laborables(tree, anio):
-
-    # Limpiar el listado
-    for item in tree.get_children():
-        tree.delete(item)
-
-    datos = obtener_dias_no_laborables(anio)
-
-    for dato in datos:
-
-        tree.insert(
-            "",
-            "end",
-            values=(
-                dato["id"],
-                dato["fecha"],
-                dato["tipo"],
-                dato["descripcion"]
-            )
-        )
-
-
-# ============================================================
-# Guardar día no laborable
-# ============================================================
-
-def guardar_dia_no_laborable(
-    anio_var,
-    fecha_var,
-    tipo_var,
-    descripcion_var,
-    tree
-):
-
-    from tkinter import messagebox
-    from database import conectar
-    from datetime import datetime
-
-    anio = anio_var.get().strip()
-    fecha = fecha_var.get().strip()
-    tipo = tipo_var.get().strip()
-    descripcion = descripcion_var.get().strip()
-
-    # --------------------------------------------------------
-    # Validar año
-    # --------------------------------------------------------
-
-    if not anio:
-        messagebox.showwarning(
-            "Datos incompletos",
-            "Debe seleccionar un año."
-        )
-        return
-
-    # --------------------------------------------------------
-    # Validar fecha
-    # --------------------------------------------------------
-
-    if not fecha:
-        messagebox.showwarning(
-            "Datos incompletos",
-            "Debe ingresar una fecha."
-        )
-        return
-
-    try:
-
-        fecha_dt = datetime.strptime(
-            fecha,
-            "%d/%m/%Y"
-        )
-
-    except ValueError:
-
-        messagebox.showerror(
-            "Fecha incorrecta",
-            "La fecha debe tener el formato DD/MM/AAAA."
-        )
-        return
-
-    # --------------------------------------------------------
-    # Verificar que el año coincida
-    # --------------------------------------------------------
-
-    if fecha_dt.year != int(anio):
-
-        messagebox.showerror(
-            "Año incorrecto",
-            "El año de la fecha no coincide con el año seleccionado."
-        )
-        return
-
-    # --------------------------------------------------------
-    # Validar tipo
-    # --------------------------------------------------------
-
-    if not tipo:
-
-        messagebox.showwarning(
-            "Datos incompletos",
-            "Debe seleccionar un tipo."
-        )
-        return
-
-    # --------------------------------------------------------
-    # Validar descripción
-    # --------------------------------------------------------
-
-    if not descripcion:
-
-        messagebox.showwarning(
-            "Datos incompletos",
-            "Debe ingresar una descripción."
-        )
-        return
-
-    # --------------------------------------------------------
-    # Guardar
-    # --------------------------------------------------------
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    try:
-
-        cursor.execute("""
-            INSERT INTO dias_no_laborables (
-                anio,
-                fecha,
-                tipo,
-                descripcion
-            )
-            VALUES (?, ?, ?, ?)
-        """, (
-            int(anio),
-            fecha,
-            tipo,
-            descripcion
-        ))
-
-        conn.commit()
-
-    except Exception as e:
-
-        conn.rollback()
-
-        messagebox.showerror(
-            "Error",
-            f"No se pudo guardar el día no laborable.\n\n{e}"
-        )
-
-        conn.close()
-        return
-
-    conn.close()
-
-    # --------------------------------------------------------
-    # Actualizar listado
-    # --------------------------------------------------------
-
-    cargar_dias_no_laborables(
-        tree,
-        int(anio)
-    )
-
-    # --------------------------------------------------------
-    # Limpiar campos
-    # --------------------------------------------------------
-
-    fecha_var.set("")
-    tipo_var.set("")
-    descripcion_var.set("")
-
-    messagebox.showinfo(
-        "Guardado",
-        "El día no laborable fue registrado correctamente."
-    )
-
-# ====================== Ventana de Días No Laborables ======================
 def ventana_dias_no_laborables():
 
     ventana = tk.Toplevel()
@@ -255,9 +73,6 @@ def ventana_dias_no_laborables():
         sticky="e"
     )
 
-    anio_actual = datetime.now().year
-    anio_var = tk.StringVar()
-
     combo_anio = ttk.Combobox(
         frame_datos,
         textvariable=anio_var,
@@ -277,8 +92,7 @@ def ventana_dias_no_laborables():
         pady=8,
         sticky="w"
     )
-    combo_anio["values"] = ("2025", "2026", "2027")
-    combo_anio.current(1)
+
 
     # ========================================================
     # FECHA
@@ -506,13 +320,7 @@ def ventana_dias_no_laborables():
 
     ttk.Button(
         frame_botones,
-        text="Guardar",
-        command=lambda: guardar_dia_no_laborable(
-            anio_var,
-            fecha_var,
-            tipo_var,
-            descripcion_var,
-            tree )
+        text="Guardar"
     ).pack(
         side="left",
         padx=5
@@ -540,28 +348,30 @@ def ventana_dias_no_laborables():
     ttk.Button(
         frame_botones,
         text="Cerrar",
-        command=ventana.quit
+        command=ventana.destroy
     ).pack(
         side="right",
         padx=5
     )
 
 
-
     # ========================================================
     # CARGAR REGISTROS DEL AÑO ACTUAL
     # ========================================================
 
-    cargar_dias_no_laborables(
-    tree,
-    int(anio_var.get())
-)
-# -----------------------------------------------------------------------
+    datos = obtener_dias_no_laborables(
+        int(anio_var.get())
+    )
 
+    for dato in datos:
 
-ventana_principal = tk.Tk()
-ventana_principal.withdraw()
-
-ventana_dias_no_laborables()
-
-ventana_principal.mainloop()
+        tree.insert(
+            "",
+            "end",
+            values=(
+                dato["id"],
+                dato["fecha"],
+                dato["tipo"],
+                dato["descripcion"]
+            )
+        )
