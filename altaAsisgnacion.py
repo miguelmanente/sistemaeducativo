@@ -723,7 +723,7 @@ def info_asignaciones():
         nombre_archivo = f"Reporte_Curso_{curso_buscado.replace(' ', '_') if curso_buscado else 'Completo'}.pdf"
         
         # 1. Definimos la ruta de la carpeta donde queremos guardar los archivos
-        carpeta_destino = os.path.join("reportes", "pdfs")
+        carpeta_destino = os.path.join("reportes", "pdf", "Asignacion_Docente")
         
         # 2. Si la carpeta no existe, Python la crea en un segundo (crea 'reportes' y adentro 'pdfs')
         if not os.path.exists(carpeta_destino):

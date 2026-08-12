@@ -1,4 +1,3 @@
-
 # ==========================================================================================
 #             RANKING DE INASISTENCIAS DE DOCENTES - MÓDULO rankinginasistencias.py
 # ==========================================================================================
@@ -208,7 +207,7 @@ class RankingInasistenciasApp:
         cat_predominante = valores[3]  # <--- Lee directo la columna Cat. Predominante
 
         # Ruta de salida
-        carpeta_destino = os.path.join("reportes", "pdf", "faltadocentes")
+        carpeta_destino = os.path.join("reportes", "pdf", "Faltas_Docentes")
         os.makedirs(carpeta_destino, exist_ok=True)
 
         nombre_limpio = str(nombre_docente).replace(" ", "_")

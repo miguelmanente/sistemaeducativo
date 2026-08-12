@@ -253,7 +253,7 @@ def abrir_parte_diario():
         # 2. Configurar carpetas y rutas
         #carpeta = "reportes"  # Cambiado a 'reporte' para cumplir con tu consigna
         #os.makedirs(carpeta, exist_ok=True)
-        carpeta = os.path.join("reportes", "planilla diaria")
+        carpeta = os.path.join("reportes", "pdf", "planilla diaria")
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
 

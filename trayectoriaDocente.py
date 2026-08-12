@@ -174,7 +174,7 @@ def abrir_trayectoria_docente():
             messagebox.showinfo("Sin Datos", "El docente seleccionado no registra servicios en el sistema.", parent=ventana)
             return
             
-        carpeta = os.path.join("reportes", "certificados")
+        carpeta = os.path.join("reportes", "pdf","Certifición_Servicios")
         if not os.path.exists(carpeta):
             os.makedirs(carpeta)
             
