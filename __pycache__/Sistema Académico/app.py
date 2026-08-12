@@ -3,7 +3,6 @@
 # =====================================================
 
 # ----------------------------- LIBRERÍAS -------------------------------
-from logging import root
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -16,7 +15,6 @@ from centraVent import centrar_ventana
 from datosDocentes import info_profesor
 from altaMaterias import info_materias
 #from listados import ventana_listado"""
-from rankingInasistencia import RankingInasistenciasApp
 import sesion
 from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
@@ -133,7 +131,6 @@ def pPrincipal():
     barramenu.add_cascade(label="Inasistencias Docentes", menu=mAsistencias)
     mAsistencias.add_command(label="Altas Inasistencias", command=InasistenciaDocente)
     mAsistencias.add_command(label="Resumen Inasistencias Docente", command=ventana_resumen)
-    mAsistencias.add_command(label="Ranking Inasistencias", command= lambda: RankingInasistenciasApp(ventana))   
 
     # ============================================================
     # Menú Configuración
