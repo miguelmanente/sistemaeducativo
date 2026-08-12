@@ -8,8 +8,8 @@ from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from database import validar_usuario, crear_tablas  # ¡Agregá crear_tablas acá!
-from centraVent import centrar_ventana, cventana
 from app import pPrincipal
+from centraVent import centrar_ventana, cventana
 from registrar import ventana_registro
 import sesion  # muestra la variable del usuario conectado al sistema
 from Backup import crear_backup
@@ -20,6 +20,13 @@ from negocio.calendario_escolar import generar_calendario
 # ------------------------------------------------ VARIABLE GLOBAL ----------------------------------------
 usuario_logueado = None
 # ---------------------------------------------------------------------------------------------------------
+
+# ------------------------------------------- VENTANA PRINCIPAL -----------------------------------------------------
+root = tk.Tk()
+# 🔥 OCULTAR HASTA LOGIN
+root.withdraw()
+root.title("SISTEMA ACADÉMICO")
+# -------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------- LOGIN -----------------------------------------------------
 def ventana_login(root, barramenu, lbl_usuario):
@@ -68,7 +75,7 @@ def ventana_login(root, barramenu, lbl_usuario):
 
             login.destroy()
             root.deiconify()  # Mostrar sistema principal
-
+            root.state("zoomed")
         else:
             messagebox.showerror("Error de Acceso", "Usuario o contraseña incorrectos.", parent=login)
             # Limpiamos los campos para que intente de nuevo
@@ -89,14 +96,6 @@ def ventana_login(root, barramenu, lbl_usuario):
     cventana(login)
 
 
-# ------------------------------------------- VENTANA PRINCIPAL -----------------------------------------------------
-root = tk.Tk()
-root.title("SISTEMA ACADÉMICO")
-root.geometry("1100x700")
-
-# 🔥 OCULTAR HASTA LOGIN
-root.withdraw()
-# -------------------------------------------------------------------------------------------------------------------
 
 # ---------------- BARRA INDICADORA DE USUARIO LOGUEADO  ------------------------------------------------------------
 frame_top = tk.Frame(root, bg="#2c3e50", height=30)
@@ -194,8 +193,8 @@ lbl_logo.image = logo
 # ---------------- INICIAR LOGIN AUTOMÁTICO ---------------------------------------------------------------------------
 ventana_login(root, barramenu, lbl_usuario)
 generar_calendario(2026)  # Genera el calendario del año actual
-crear_backup()
 centrar_ventana(root)
+crear_backup()
 # ---------------------------------------------------------------------------------------------------------------------
 
 root.mainloop()

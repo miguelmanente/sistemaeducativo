@@ -21,6 +21,8 @@ from trayectoriaDocente import abrir_trayectoria_docente
 from parteDiario import abrir_parte_diario
 from inasistencia_v2 import InasistenciaDocente
 from resumen_inasistencias import ventana_resumen
+from ciclo_lectivo import ventana_ciclo_lectivo
+from dias_no_laborables import ventana_dias_no_laborables
 
 
 #Código - Zona de funciones
@@ -62,10 +64,12 @@ def pPrincipal():
     #-------------------------------------- VENTANA PRINCIPAL -------------------------------------
     #Ventana principal 
     ventana = tk.Toplevel()
-    ventana.tk.call('tk', 'scaling', 1.0)  # (opcional)
+    #ventana.tk.call('tk', 'scaling', 1.0)  # (opcional)
     ventana.title("SISTEMA ACADÉMICO")
-    ventana.geometry("1100x700")
-    
+    #ventana.geometry("1100x700")
+    ventana.state("zoomed")
+
+
     #ventana.protocol("WM_DELETE_WINDOW", lambda: None)  anula de la barra superior LA X para cerrar ventana
     ventana.rowconfigure(0, weight=1)
     ventana.rowconfigure(1, weight=0)
@@ -115,15 +119,9 @@ def pPrincipal():
     #Menú Trayectoria Docente
     mAsignaciones = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Historial Docente", menu=mAsignaciones)
-    mAsignaciones.add_command(label="Visualizar Trayactorias", command=abrir_trayectoria_docente)
+    mAsignaciones.add_command(label="Visualizar Trayectoria", command=abrir_trayectoria_docente)
 
-    #Menú Listados de profesores
-    #mListados = tk.Menu(barramenu, tearoff=0)
-    #barramenu.add_cascade(label="Listados", menu=mListados)
-    #mListados.add_command(label="Profesores Titulares", command=lambda: "ventana_listado("Titular"))
-   # mListados.add_command(label="Profesores Provisorio", command=lambda: "ventana_listado("Provisorio"))
-   # mL
-   # istados.add_command(label="Profesores Suplentes",command=lambda: "ventana_listado("Suplente"))"""
+    #Menú Parte Diario   
     mParteDiario = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Parte Diario", menu=mParteDiario)
     mParteDiario.add_command(label="Listado Planillas Diarias", command=abrir_parte_diario)
@@ -133,9 +131,15 @@ def pPrincipal():
     barramenu.add_cascade(label="Inasistencias Docentes", menu=mAsistencias)
     mAsistencias.add_command(label="Altas Inasistencias", command=InasistenciaDocente)
     mAsistencias.add_command(label="Resumen Inasistencias Docente", command=ventana_resumen)
-    """mAsistencias.add_command(label="Ranking Inasistencias", command="ventana_ranking")
-    mAsistencias.add_command(label="Estadisticas Docentes", command="ventana_estadisticas")
-    """
+
+    # ============================================================
+    # Menú Configuración
+    # ============================================================
+    mConfiguracion = tk.Menu(barramenu, tearoff=0)
+    barramenu.add_cascade(label="Configuración", menu=mConfiguracion)
+    mConfiguracion.add_command(label="Ciclo Lectivo", command=ventana_ciclo_lectivo)
+    mConfiguracion.add_command(label="Días No Laborables", command=ventana_dias_no_laborables)
+  
     #Menú Acerca
     mAcerca = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Ayuda", menu=mAcerca)

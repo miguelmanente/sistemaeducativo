@@ -211,14 +211,6 @@ def guardar_ciclo_lectivo(anio, fecha_inicio, fecha_fin, observacion=""):
 # ============================================================
 # Cuenta cuántos días hábiles de un determinado día de la semana
 # existen entre dos fechas.
-#
-# Ejemplo:
-# contar_dias_semana("Miércoles",
-#                    "24/02/2026",
-#                    "18/12/2026")
-#
-# Devuelve:
-#     32
 # ============================================================
 def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
 
@@ -247,18 +239,4 @@ def contar_dias_semana(dia_semana, fecha_inicio, fecha_fin):
 # --------------------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    
-    print()
-
-    print("Miércoles hábiles:")
-
-    print(
-        contar_dias_semana(
-            "Miércoles",
-            "2026-02-24",
-            "2026-12-18"
-        )
-    )
     

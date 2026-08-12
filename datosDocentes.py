@@ -12,7 +12,6 @@ from centraVent import centrar_ventana
 from estilos import configurar_estilos
 from Backup import crear_backup
 from validaciones import dni_existente, validar_cuil, validar_dni, validar_email, validar_nombre
-
 from utilidades import formatear_cuil, normalizar_nombre,normalizar_telefono, formatear_telefono, normalizar_cuil, formatear_dni, formatear_fecha, generar_cuil, normalizar_fecha
 
 # ----------- Función que maneja toda la ventana datos personales del profesor ------------

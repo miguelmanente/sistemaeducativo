@@ -175,22 +175,29 @@ def abrir_parte_diario():
             
             -- FILTRO PRINCIPAL: Trae si coincide el día exacto O si es de Lunes a Viernes y el día seleccionado está en ese rango
             WHERE (a.dia = ? OR (a.dia = 'Lunes a Viernes' AND ? IN ('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes')))
-            AND a.turno = ? 
-            AND a.activo = 1
-            
-            GROUP BY a.id_docente, a.id_materia, a.cargo, a.hentrada, a.hsalida
-            ORDER BY
-                CASE a.cargo
-                    WHEN 'Director' THEN 1
-                    WHEN 'Vice Director' THEN 2
-                    WHEN 'Vicedirector' THEN 2
-                    WHEN 'Secretario' THEN 3
-                    WHEN 'Prosecretario' THEN 4
-                    WHEN 'Jefe de Área' THEN 5
-                    WHEN 'Encargado de Laboratorio' THEN 6
-                    ELSE 99
-                END, 
-                a.hentrada ASC;
+                    AND a.turno = ?
+                    AND a.activo = 1
+
+                    -- Si existe un suplente, no mostramos también al titular
+                    AND NOT (
+                        a.situacion_revista IN ('Titular', 'Interino')
+                        AND EXISTS (
+                            SELECT 1
+                            FROM asignacion a2
+                            WHERE a2.id_materia IS NOT DISTINCT FROM a.id_materia
+                            AND a2.cargo = a.cargo
+                            AND (
+                                a2.dia = ?
+                                OR (
+                                    a2.dia = 'Lunes a Viernes'
+                                    AND ? IN ('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes')
+                                )
+                            )
+                            AND a2.hentrada = a.hentrada
+                            AND a2.situacion_revista = 'Suplente'
+                            AND a2.activo = 1
+                        )
+                    )
         """
 
         try:
@@ -201,14 +208,21 @@ def abrir_parte_diario():
             # Ojo: Como agregamos más parámetros dinámicos a la consulta debido a las subconsultas, 
             # pasamos las variables en el orden exacto en que aparecen los signos de pregunta '?'
             parametros = (
-                dia_seleccionado, dia_seleccionado,  # Para el primer CASE (COUNT)
-                dia_seleccionado, dia_seleccionado,  # Para el primer CASE (Nombre suplente)
-                dia_seleccionado, dia_seleccionado,  # Para el reemplaza_a (COUNT)
-                dia_seleccionado, dia_seleccionado,  # Para el reemplaza_a (Nombre titular)
-                dia_seleccionado, dia_seleccionado,  # Para el WHERE principal
-                turno_seleccionado                   # Para el turno en el WHERE principal
-            )
+                dia_seleccionado, dia_seleccionado,  # CASE COUNT
+                dia_seleccionado, dia_seleccionado,  # nombre suplente
 
+                dia_seleccionado, dia_seleccionado,  # reemplaza_a COUNT
+                dia_seleccionado, dia_seleccionado,  # nombre titular
+
+                # WHERE principal
+                dia_seleccionado,
+                dia_seleccionado,
+                turno_seleccionado,
+
+                # NUEVO: verificar si existe suplente
+                dia_seleccionado,
+                dia_seleccionado
+            )
             cursor.execute(query_unificada, parametros)
             filas = cursor.fetchall()
 

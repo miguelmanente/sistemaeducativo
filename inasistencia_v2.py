@@ -1,10 +1,16 @@
 # =============================================================================
+# ALTAS INASISTENCIAS DE DOCENTES - Módulo inasistencia_v2.py
+# =============================================================================
+""" Módulo para gestionar las inasistencias de los docentes. 
+Su funcionalidad incluye la carga, modificación, eliminación y 
+visualización de inasistencias, así como la generación de reportes en PDF. """
+
+# =============================================================================
 # IMPORTACIONES
 # =============================================================================
-
 import tkinter as tk
 from tkinter import ttk, messagebox
-
+from datetime import datetime, timedelta
 from database import conectar
 from estilos import configurar_estilos
 
@@ -12,7 +18,6 @@ from estilos import configurar_estilos
 # =============================================================================
 # CLASE PRINCIPAL
 # =============================================================================
-
 class InasistenciaDocente:
 
     # =========================================================================
@@ -121,10 +126,69 @@ class InasistenciaDocente:
         self.cmb_asignacion["values"] = lista
     # -----------------------------------------------------------------------------
 
+    # ==================== DETERMINAR SI ASIGNACIÓN QUEDA AFECTADA =================
+    def asignacion_afectada(self, dia_asignacion, fecha_desde, fecha_hasta, cursor):
+        """
+        Determina si una asignación del docente queda afectada
+        por el período de inasistencia.
+        """
+
+        try:
+            desde = datetime.strptime(fecha_desde, "%d/%m/%Y")
+            hasta = datetime.strptime(fecha_hasta, "%d/%m/%Y")
+        except ValueError:
+            return False
+
+        # Obtener los días no laborables del período
+        cursor.execute("""
+            SELECT fecha
+            FROM dias_no_laborables
+            WHERE fecha BETWEEN ? AND ?
+        """, (
+            fecha_desde,
+            fecha_hasta
+        ))
+
+        no_laborables = {
+            fila[0] for fila in cursor.fetchall()
+        }
+
+        dias_semana = {
+            0: "Lunes",
+            1: "Martes",
+            2: "Miércoles",
+            3: "Jueves",
+            4: "Viernes"
+        }
+
+        fecha = desde
+
+        while fecha <= hasta:
+
+            # Sábado y domingo
+            if fecha.weekday() <= 4:
+
+                fecha_str = fecha.strftime("%d/%m/%Y")
+
+                # No se trabaja en días no laborables
+                if fecha_str not in no_laborables:
+
+                    # Cargo de lunes a viernes
+                    if dia_asignacion == "Lunes a Viernes":
+                        return True
+
+                    # Materia/asignación de un día específico
+                    if dia_asignacion == dias_semana[fecha.weekday()]:
+                        return True
+
+            fecha += timedelta(days=1)
+
+        return False
+    # ----------------------------------------------------------------------------------
+
     # ================= cargar treeview (inasistencias +Join) ====================
     def cargar_tree(self):
-
-        # 1. limpiar SIEMPRE
+        # 1. Limpiar siempre
         for item in self.tabla.get_children():
             self.tabla.delete(item)
 
@@ -140,20 +204,23 @@ class InasistenciaDocente:
                 a.modulos,
                 a.curso,
                 a.situacion_revista,
+                a.dia,
                 i.fecha_desde,
                 i.fecha_hasta,
                 i.motivo,
                 i.observacion
             FROM inasistencia i
-            JOIN profesores p ON p.id_docente = i.id_docente
-            LEFT JOIN asignacion a ON a.id_docente = p.id_docente
-            LEFT JOIN materias m ON m.id_materia = a.id_materia
+            JOIN profesores p
+                ON p.id_docente = i.id_docente
+            LEFT JOIN asignacion a
+                ON a.id_docente = p.id_docente
+            LEFT JOIN materias m
+                ON m.id_materia = a.id_materia
             WHERE i.id_docente = ?
             ORDER BY i.fecha_desde DESC
         """, (self.id_docente_actual,))
 
         datos = cursor.fetchall()
-        conn.close()
 
         for fila in datos:
 
@@ -165,11 +232,26 @@ class InasistenciaDocente:
                 modulos,
                 curso,
                 revista,
+                dia_asignacion,
                 desde,
                 hasta,
                 motivo,
                 obs
             ) = fila
+
+            # Si no hay asignación, no mostramos la fila
+            if dia_asignacion is None:
+                continue
+
+            # Verificar si esta asignación realmente
+            # corresponde a algún día de la inasistencia
+            if not self.asignacion_afectada(
+                dia_asignacion,
+                desde,
+                hasta,
+                cursor
+            ):
+                continue
 
             self.tabla.insert(
                 "",
@@ -188,6 +270,8 @@ class InasistenciaDocente:
                     obs
                 )
             )
+
+        conn.close()
     # -----------------------------------------------------------------------------
 
     # ========================== VALIDACIÓN SIMPLE ================================
@@ -583,12 +667,4 @@ class InasistenciaDocente:
         self.tabla.pack(fill="both", expand=True)
 
         self.tabla.bind("<<TreeviewSelect>>", self.seleccionar_tree)
-
-# =========================  INICIO de la Inasistencia_v2 ==============================
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.withdraw()  # oculta la ventana principal
-    app = InasistenciaDocente()
-    root.mainloop()
-# --------------------------------------------------------------------------------------
 
