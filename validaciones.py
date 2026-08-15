@@ -361,3 +361,80 @@ def validar_rango_fechas(fecha_inicio, fecha_fin):
 
     return fin >= inicio
 # -------------------------------------------------------------------------------
+
+# ===============================================================================
+#                       VALIDAR FECHA DE NACIMIENTO
+# ===============================================================================
+def validar_fecha_nacimiento(fecha, edad_minima=18, edad_maxima=100):
+    """
+    Verifica que una fecha de nacimiento sea razonable
+    para una persona docente.
+
+    Reglas:
+        - La fecha debe tener formato DD/MM/AAAA.
+        - La fecha debe existir.
+        - No puede ser una fecha futura.
+        - La edad debe ser como mínimo 18 años.
+        - La edad no puede superar 100 años.
+
+    Parámetros:
+        fecha (str):
+            Fecha en formato DD/MM/AAAA.
+
+        edad_minima (int):
+            Edad mínima permitida.
+
+        edad_maxima (int):
+            Edad máxima permitida.
+
+    Retorna:
+        True  -> La fecha es válida.
+        False -> La fecha no es válida.
+    """
+
+    if not validar_fecha(fecha):
+        return False
+
+    fecha_nacimiento = datetime.strptime(
+        fecha,
+        "%d/%m/%Y"
+    )
+
+    hoy = datetime.now()
+
+    # ------------------------------------------------------
+    # No puede ser una fecha futura
+    # ------------------------------------------------------
+
+    if fecha_nacimiento > hoy:
+        return False
+
+    # ------------------------------------------------------
+    # Calcular edad
+    # ------------------------------------------------------
+
+    edad = hoy.year - fecha_nacimiento.year
+
+    # Si todavía no cumplió años este año
+    if (
+        (hoy.month, hoy.day)
+        < (fecha_nacimiento.month, fecha_nacimiento.day)
+    ):
+        edad -= 1
+
+    # ------------------------------------------------------
+    # Verificar edad mínima
+    # ------------------------------------------------------
+
+    if edad < edad_minima:
+        return False
+
+    # ------------------------------------------------------
+    # Verificar edad máxima
+    # ------------------------------------------------------
+
+    if edad > edad_maxima:
+        return False
+
+    return True
+# -----------------------------------------------------------------------------------

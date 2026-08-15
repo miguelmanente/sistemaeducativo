@@ -22,9 +22,11 @@ from estilos import configurar_estilos
 from trayectoriaDocente import abrir_trayectoria_docente
 from parteDiario import abrir_parte_diario
 from inasistencia_v2 import InasistenciaDocente
+from listadoSR import ModuloListados
 from resumen_inasistencias import ventana_resumen
 from ciclo_lectivo import ventana_ciclo_lectivo
 from dias_no_laborables import ventana_dias_no_laborables
+from ventana_importacion import VentanaImportacion
 
 
 #Código - Zona de funciones
@@ -100,13 +102,14 @@ def pPrincipal():
     #Menú Archivo
     mArchivo = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Archivo", menu=mArchivo)
+    mArchivo.add_command(label="Importar datos a Base de datos", command=lambda: VentanaImportacion(ventana))
     mArchivo.add_command(label="Salir", command=salir)
 
     #Menú Profesor
     mProfesor =tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Profesor", menu=mProfesor)
     mProfesor.add_command(label="Datos Docentes", command=info_profesor)
-    #mProfesor.add_command(label="Personal con cargos", command="ventana_cargos")
+    mProfesor.add_command(label="Listados Situación Revista", command=lambda: ModuloListados(ventana))
 
     #Menú Materias
     mMaterias = tk.Menu(barramenu, tearoff=0)
