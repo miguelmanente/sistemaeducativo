@@ -18,6 +18,7 @@ Autor: Miguel Ángel Manente
 # IMPORTACIONES
 # ==========================================================
 
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -56,12 +57,12 @@ class VentanaImportacion:
         )
 
         self.ventana.geometry(
-            "1100x700"
+            "1300x680"
         )
 
         self.ventana.minsize(
-            900,
-            600
+            1300,
+            680
         )
 
         # --------------------------------------------------
@@ -110,18 +111,75 @@ class VentanaImportacion:
     def crear_interfaz(self):
 
         # ==================================================
+        # CONTENEDOR PRINCIPAL
+        # ==================================================
+
+        frame_principal = ttk.Frame(
+            self.ventana
+        )
+
+        frame_principal.pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10
+        )
+
+        # ==================================================
+        # CONFIGURACIÓN DE FILAS
+        #
+        # Solamente la fila de la tabla puede expandirse.
+        # ==================================================
+
+        frame_principal.rowconfigure(
+            0,
+            weight=0
+        )
+
+        frame_principal.rowconfigure(
+            1,
+            weight=0
+        )
+
+        frame_principal.rowconfigure(
+            2,
+            weight=1
+        )
+
+        frame_principal.rowconfigure(
+            3,
+            weight=0
+        )
+
+        frame_principal.rowconfigure(
+            4,
+            weight=0
+        )
+
+        frame_principal.columnconfigure(
+            0,
+            weight=1
+        )
+
+        # ==================================================
         # FRAME SUPERIOR
         # ==================================================
 
         frame_superior = ttk.LabelFrame(
-            self.ventana,
+            frame_principal,
             text="Archivo de importación"
         )
 
-        frame_superior.pack(
-            fill="x",
-            padx=10,
-            pady=10
+        frame_superior.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            pady=(0, 8)
+        )
+
+        frame_superior.columnconfigure(
+            1,
+            weight=1
         )
 
         # --------------------------------------------------
@@ -135,7 +193,7 @@ class VentanaImportacion:
             row=0,
             column=0,
             padx=10,
-            pady=10,
+            pady=8,
             sticky="w"
         )
 
@@ -153,13 +211,8 @@ class VentanaImportacion:
             row=0,
             column=1,
             padx=5,
-            pady=10,
+            pady=8,
             sticky="ew"
-        )
-
-        frame_superior.columnconfigure(
-            1,
-            weight=1
         )
 
         # --------------------------------------------------
@@ -176,7 +229,7 @@ class VentanaImportacion:
             row=0,
             column=2,
             padx=5,
-            pady=10
+            pady=8
         )
 
         # --------------------------------------------------
@@ -194,7 +247,7 @@ class VentanaImportacion:
             row=0,
             column=3,
             padx=5,
-            pady=10
+            pady=8
         )
 
         # ==================================================
@@ -202,15 +255,20 @@ class VentanaImportacion:
         # ==================================================
 
         frame_resumen = ttk.LabelFrame(
-            self.ventana,
+            frame_principal,
             text="Resumen"
         )
 
-        frame_resumen.pack(
-            fill="x",
-            padx=10,
-            pady=(0, 10)
+        frame_resumen.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            pady=(0, 8)
         )
+
+        # --------------------------------------------------
+        # Resumen
+        # --------------------------------------------------
 
         self.lbl_total = ttk.Label(
             frame_resumen,
@@ -221,7 +279,7 @@ class VentanaImportacion:
             row=0,
             column=0,
             padx=15,
-            pady=10
+            pady=7
         )
 
         self.lbl_nuevos = ttk.Label(
@@ -233,7 +291,7 @@ class VentanaImportacion:
             row=0,
             column=1,
             padx=15,
-            pady=10
+            pady=7
         )
 
         self.lbl_actualizar = ttk.Label(
@@ -245,7 +303,7 @@ class VentanaImportacion:
             row=0,
             column=2,
             padx=15,
-            pady=10
+            pady=7
         )
 
         self.lbl_sin_cambios = ttk.Label(
@@ -257,7 +315,7 @@ class VentanaImportacion:
             row=0,
             column=3,
             padx=15,
-            pady=10
+            pady=7
         )
 
         self.lbl_errores = ttk.Label(
@@ -269,23 +327,35 @@ class VentanaImportacion:
             row=0,
             column=4,
             padx=15,
-            pady=10
+            pady=7
         )
 
         # ==================================================
         # FRAME TABLA
+        #
+        # ESTA ES LA ÚNICA ZONA QUE SE EXPANDE.
         # ==================================================
 
         frame_tabla = ttk.LabelFrame(
-            self.ventana,
+            frame_principal,
             text="Vista previa"
         )
 
-        frame_tabla.pack(
-            fill="both",
-            expand=True,
-            padx=10,
-            pady=(0, 10)
+        frame_tabla.grid(
+            row=2,
+            column=0,
+            sticky="nsew",
+            pady=(0, 8)
+        )
+
+        frame_tabla.rowconfigure(
+            0,
+            weight=1
+        )
+
+        frame_tabla.columnconfigure(
+            0,
+            weight=1
         )
 
         # --------------------------------------------------
@@ -297,9 +367,10 @@ class VentanaImportacion:
             orient="vertical"
         )
 
-        scrollbar_vertical.pack(
-            side="right",
-            fill="y"
+        scrollbar_vertical.grid(
+            row=0,
+            column=1,
+            sticky="ns"
         )
 
         # --------------------------------------------------
@@ -311,9 +382,10 @@ class VentanaImportacion:
             orient="horizontal"
         )
 
-        scrollbar_horizontal.pack(
-            side="bottom",
-            fill="x"
+        scrollbar_horizontal.grid(
+            row=1,
+            column=0,
+            sticky="ew"
         )
 
         # --------------------------------------------------
@@ -406,9 +478,10 @@ class VentanaImportacion:
             width=500
         )
 
-        self.tree.pack(
-            fill="both",
-            expand=True
+        self.tree.grid(
+            row=0,
+            column=0,
+            sticky="nsew"
         )
 
         # ==================================================
@@ -446,29 +519,94 @@ class VentanaImportacion:
 
         # ==================================================
         # FRAME DETALLE
+        #
+        # Altura CONTROLADA.
+        # No puede empujar los botones fuera de la pantalla.
         # ==================================================
 
         frame_detalle = ttk.LabelFrame(
-            self.ventana,
-            text="Detalle"
+            frame_principal,
+            text="Detalle del registro seleccionado"
         )
 
-        frame_detalle.pack(
-            fill="x",
-            padx=10,
-            pady=(0, 10)
+        frame_detalle.grid(
+            row=3,
+            column=0,
+            sticky="ew",
+            pady=(0, 8)
         )
 
-        self.texto_detalle = tk.Text(
-            frame_detalle,
-            height=6,
-            wrap="word"
+        frame_detalle.columnconfigure(
+            0,
+            weight=1
         )
 
-        self.texto_detalle.pack(
-            fill="x",
+        frame_detalle.rowconfigure(
+            0,
+            weight=1
+        )
+
+        # --------------------------------------------------
+        # Contenedor del texto
+        # --------------------------------------------------
+
+        frame_texto_detalle = ttk.Frame(
+            frame_detalle
+        )
+
+        frame_texto_detalle.grid(
+            row=0,
+            column=0,
+            sticky="ew",
             padx=5,
             pady=5
+        )
+
+        frame_texto_detalle.columnconfigure(
+            0,
+            weight=1
+        )
+
+        frame_texto_detalle.rowconfigure(
+            0,
+            weight=1
+        )
+
+        # --------------------------------------------------
+        # Scroll del detalle
+        # --------------------------------------------------
+
+        scrollbar_detalle = ttk.Scrollbar(
+            frame_texto_detalle,
+            orient="vertical"
+        )
+
+        scrollbar_detalle.grid(
+            row=0,
+            column=1,
+            sticky="ns"
+        )
+
+        # --------------------------------------------------
+        # Texto
+        # --------------------------------------------------
+
+        self.texto_detalle = tk.Text(
+            frame_texto_detalle,
+            height=5,
+            wrap="word",
+            font=("Segoe UI", 10),
+            yscrollcommand=scrollbar_detalle.set
+        )
+
+        self.texto_detalle.grid(
+            row=0,
+            column=0,
+            sticky="ew"
+        )
+
+        scrollbar_detalle.config(
+            command=self.texto_detalle.yview
         )
 
         self.texto_detalle.config(
@@ -477,21 +615,54 @@ class VentanaImportacion:
 
         # ==================================================
         # FRAME BOTONES
+        #
+        # ESTE FRAME NUNCA SE EXPANDE.
         # ==================================================
 
         frame_botones = ttk.Frame(
-            self.ventana
+            frame_principal
         )
 
-        frame_botones.pack(
-            fill="x",
-            padx=10,
-            pady=(0, 10)
+        frame_botones.grid(
+            row=4,
+            column=0,
+            sticky="ew"
         )
 
-        # --------------------------------------------------
-        # Confirmar
-        # --------------------------------------------------
+        # ==================================================
+        # BOTÓN ABRIR ARCHIVO
+        # ==================================================
+
+        self.boton_abrir_archivo = ttk.Button(
+            frame_botones,
+            text="Abrir archivo para corregir",
+            command=self.abrir_archivo_para_corregir,
+            state="disabled"
+        )
+
+        self.boton_abrir_archivo.pack(
+            side="left",
+            padx=5
+        )
+
+        # ==================================================
+        # BOTÓN CERRAR
+        # ==================================================
+
+        self.boton_cerrar = ttk.Button(
+            frame_botones,
+            text="Cerrar",
+            command=self.cerrar
+        )
+
+        self.boton_cerrar.pack(
+            side="right",
+            padx=5
+        )
+
+        # ==================================================
+        # BOTÓN CONFIRMAR
+        # ==================================================
 
         self.boton_confirmar = ttk.Button(
             frame_botones,
@@ -501,21 +672,6 @@ class VentanaImportacion:
         )
 
         self.boton_confirmar.pack(
-            side="right",
-            padx=5
-        )
-
-        # --------------------------------------------------
-        # Cerrar
-        # --------------------------------------------------
-
-        self.boton_cerrar = ttk.Button(
-            frame_botones,
-            text="Cerrar",
-            command=self.cerrar
-        )
-
-        self.boton_cerrar.pack(
             side="right",
             padx=5
         )
@@ -828,14 +984,25 @@ class VentanaImportacion:
         return ""
 
     # ======================================================
-    # MOSTRAR DETALLE
+    # MOSTRAR DETALLE DEL REGISTRO SELECCIONADO
     # ======================================================
 
     def mostrar_detalle(self, event=None):
 
         seleccion = self.tree.selection()
 
+        # --------------------------------------------------
+        # Deshabilitar botón inicialmente
+        # --------------------------------------------------
+
+        self.boton_abrir_archivo.config(
+            state="disabled"
+        )
+
         if not seleccion:
+
+            self.limpiar_detalle()
+
             return
 
         fila = int(
@@ -853,27 +1020,169 @@ class VentanaImportacion:
                 break
 
         if resultado_seleccionado is None:
+
+            self.limpiar_detalle()
+
             return
 
+        # ==================================================
+        # DATOS
+        # ==================================================
+
+        datos = resultado_seleccionado.get(
+            "datos",
+            {}
+        )
+
+        estado = resultado_seleccionado.get(
+            "estado",
+            ""
+        )
+
         texto = []
+
+        # ==================================================
+        # NOMBRES AMIGABLES
+        # ==================================================
+
+        nombres_campos = {
+            "id_docente": "ID Docente",
+            "apellido": "Apellido",
+            "nombre": "Nombre",
+            "dni": "DNI",
+            "cuil": "CUIL",
+            "telefono": "Teléfono",
+            "email": "Email",
+            "direccion": "Dirección",
+            "fecha_nacimiento": "Fecha de nacimiento",
+        }
+
+        orden_campos = [
+            "id_docente",
+            "apellido",
+            "nombre",
+            "dni",
+            "cuil",
+            "telefono",
+            "email",
+            "direccion",
+            "fecha_nacimiento",
+        ]
+
+        campos_mostrados = set()
+
+        # ==================================================
+        # DATOS DEL REGISTRO
+        # ==================================================
+
+        texto.append(
+            "DATOS DEL REGISTRO"
+        )
+
+        texto.append(
+            "─" * 55
+        )
 
         texto.append(
             f"Fila Excel: "
             f"{resultado_seleccionado['fila']}"
         )
 
-        texto.append(
-            f"Estado: "
-            f"{resultado_seleccionado['estado']}"
-        )
+        texto.append("")
+
+        # --------------------------------------------------
+        # Campos en orden
+        # --------------------------------------------------
+
+        for campo in orden_campos:
+
+            if campo not in datos:
+
+                continue
+
+            valor = datos.get(
+                campo,
+                ""
+            )
+
+            if valor is None:
+
+                valor = ""
+
+            nombre_campo = nombres_campos.get(
+                campo,
+                campo.replace(
+                    "_",
+                    " "
+                ).capitalize()
+            )
+
+            texto.append(
+                f"{nombre_campo}: {valor}"
+            )
+
+            campos_mostrados.add(
+                campo
+            )
+
+        # --------------------------------------------------
+        # Campos adicionales
+        # --------------------------------------------------
+
+        for campo, valor in datos.items():
+
+            if campo in campos_mostrados:
+
+                continue
+
+            if valor is None:
+
+                valor = ""
+
+            nombre_campo = nombres_campos.get(
+                campo,
+                campo.replace(
+                    "_",
+                    " "
+                ).capitalize()
+            )
+
+            texto.append(
+                f"{nombre_campo}: {valor}"
+            )
+
+        # ==================================================
+        # ESTADO
+        # ==================================================
 
         texto.append("")
 
+        texto.append(
+            "ESTADO DE IMPORTACIÓN"
+        )
+
+        texto.append(
+            "─" * 55
+        )
+
+        texto.append(
+            f"Estado: {estado}"
+        )
+
+        # ==================================================
+        # ERRORES
+        # ==================================================
+
         errores = (
-            resultado_seleccionado["errores"]
+            resultado_seleccionado.get(
+                "errores",
+                []
+            )
         )
 
         if errores:
+
+            texto.append("")
 
             texto.append(
                 "ERRORES:"
@@ -885,15 +1194,20 @@ class VentanaImportacion:
                     f"  • {error}"
                 )
 
-            texto.append("")
+        # ==================================================
+        # ADVERTENCIAS
+        # ==================================================
 
         advertencias = (
-            resultado_seleccionado[
-                "advertencias"
-            ]
+            resultado_seleccionado.get(
+                "advertencias",
+                []
+            )
         )
 
         if advertencias:
+
+            texto.append("")
 
             texto.append(
                 "ADVERTENCIAS:"
@@ -905,22 +1219,37 @@ class VentanaImportacion:
                     f"  • {advertencia}"
                 )
 
-            texto.append("")
+        # ==================================================
+        # CAMBIOS
+        # ==================================================
 
         cambios = (
-            resultado_seleccionado["cambios"]
+            resultado_seleccionado.get(
+                "cambios",
+                {}
+            )
         )
 
         if cambios:
 
+            texto.append("")
+
             texto.append(
-                "CAMBIOS:"
+                "CAMBIOS DETECTADOS:"
             )
 
             for campo, cambio in cambios.items():
 
+                nombre_campo = nombres_campos.get(
+                    campo,
+                    campo.replace(
+                        "_",
+                        " "
+                    ).capitalize()
+                )
+
                 texto.append(
-                    f"  • {campo}:"
+                    f"  • {nombre_campo}:"
                 )
 
                 texto.append(
@@ -933,6 +1262,57 @@ class VentanaImportacion:
                     f"{cambio['nuevo']}"
                 )
 
+        # ==================================================
+        # RESULTADO FINAL
+        # ==================================================
+
+        texto.append("")
+
+        texto.append(
+            "RESULTADO:"
+        )
+
+        if estado == "NUEVO":
+
+            texto.append(
+                "  El registro será agregado "
+                "a la base de datos."
+            )
+
+        elif estado == "ACTUALIZAR":
+
+            texto.append(
+                "  El registro existente será "
+                "actualizado."
+            )
+
+        elif estado == "SIN_CAMBIOS":
+
+            texto.append(
+                "  No se realizará ninguna modificación."
+            )
+
+        elif estado == "ERROR":
+
+            texto.append(
+                "  El registro será omitido "
+                "de la importación."
+            )
+
+            # ----------------------------------------------
+            # Habilitar apertura del archivo
+            # ----------------------------------------------
+
+            if self.ruta_archivo.get().strip():
+
+                self.boton_abrir_archivo.config(
+                    state="normal"
+                )
+
+        # ==================================================
+        # MOSTRAR
+        # ==================================================
+
         self.texto_detalle.config(
             state="normal"
         )
@@ -944,11 +1324,71 @@ class VentanaImportacion:
 
         self.texto_detalle.insert(
             "1.0",
-            "\n".join(texto)
+            "\n".join(
+                texto
+            )
         )
 
         self.texto_detalle.config(
             state="disabled"
+        )
+
+    # ======================================================
+    # ABRIR ARCHIVO PARA CORREGIR
+    # ======================================================
+
+    def abrir_archivo_para_corregir(self):
+
+        ruta = self.ruta_archivo.get().strip()
+
+        if not ruta:
+
+            messagebox.showwarning(
+                "Archivo de importación",
+                "No hay ningún archivo Excel seleccionado.",
+                parent=self.ventana
+            )
+
+            return
+
+        if not os.path.exists(ruta):
+
+            messagebox.showerror(
+                "Archivo de importación",
+                "El archivo seleccionado ya no existe "
+                "en la ubicación indicada.",
+                parent=self.ventana
+            )
+
+            return
+
+        try:
+
+            os.startfile(
+                ruta
+            )
+
+        except Exception as e:
+
+            messagebox.showerror(
+                "Abrir archivo",
+                "No fue posible abrir el archivo "
+                "con el programa asociado a Excel.\n\n"
+                f"{e}",
+                parent=self.ventana
+            )
+
+            return
+
+        messagebox.showinfo(
+            "Corregir archivo",
+            "Se abrió el archivo de importación.\n\n"
+            "Corrija los datos necesarios y guarde "
+            "el archivo.\n\n"
+            "Luego vuelva al SGE y pulse "
+            "\"Analizar archivo\" para comprobar "
+            "nuevamente los datos.",
+            parent=self.ventana
         )
 
     # ======================================================
@@ -1002,6 +1442,7 @@ class VentanaImportacion:
         )
 
         if not confirmar:
+
             return
 
         try:
@@ -1058,6 +1499,25 @@ class VentanaImportacion:
         )
 
     # ======================================================
+    # LIMPIAR DETALLE
+    # ======================================================
+
+    def limpiar_detalle(self):
+
+        self.texto_detalle.config(
+            state="normal"
+        )
+
+        self.texto_detalle.delete(
+            "1.0",
+            "end"
+        )
+
+        self.texto_detalle.config(
+            state="disabled"
+        )
+
+    # ======================================================
     # LIMPIAR RESULTADOS
     # ======================================================
 
@@ -1072,6 +1532,10 @@ class VentanaImportacion:
         self.importacion_guardada = False
 
         self.boton_confirmar.config(
+            state="disabled"
+        )
+
+        self.boton_abrir_archivo.config(
             state="disabled"
         )
 
@@ -1101,18 +1565,7 @@ class VentanaImportacion:
             text="Errores: 0"
         )
 
-        self.texto_detalle.config(
-            state="normal"
-        )
-
-        self.texto_detalle.delete(
-            "1.0",
-            "end"
-        )
-
-        self.texto_detalle.config(
-            state="disabled"
-        )
+        self.limpiar_detalle()
 
     # ======================================================
     # CERRAR

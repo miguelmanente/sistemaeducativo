@@ -27,6 +27,7 @@ from resumen_inasistencias import ventana_resumen
 from ciclo_lectivo import ventana_ciclo_lectivo
 from dias_no_laborables import ventana_dias_no_laborables
 from ventana_importacion import VentanaImportacion
+from ventana_importacion_asignaciones import abrir_ventana_importacion_asignaciones
 
 
 #Código - Zona de funciones
@@ -102,7 +103,8 @@ def pPrincipal():
     #Menú Archivo
     mArchivo = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Archivo", menu=mArchivo)
-    mArchivo.add_command(label="Importar datos a Base de datos", command=lambda: VentanaImportacion(ventana))
+    mArchivo.add_command(label="Importar datos Docentes a B.D.", command=lambda: VentanaImportacion(ventana))
+    mArchivo.add_command(label="Importar Asignación de Docentes", command=abrir_ventana_importacion_asignaciones)
     mArchivo.add_command(label="Salir", command=salir)
 
     #Menú Profesor
@@ -159,8 +161,8 @@ def pPrincipal():
 
     # Cargar el logo
     try:
-        logo = Image.open("LogoT3.png")  # Asegúrate de que el archivo esté en la misma carpeta
-        logo = logo.resize((400, 400))
+        logo = Image.open("Logos.png")  # Asegúrate de que el archivo esté en la misma carpeta
+        logo = logo.resize((600, 400))
         logo_tk = ImageTk.PhotoImage(logo)
 
         # Mostrar el logo
