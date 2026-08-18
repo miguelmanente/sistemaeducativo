@@ -28,6 +28,7 @@ from ciclo_lectivo import ventana_ciclo_lectivo
 from dias_no_laborables import ventana_dias_no_laborables
 from ventana_importacion import VentanaImportacion
 from ventana_importacion_asignaciones import abrir_ventana_importacion_asignaciones
+from listadoTodo import VentanaReportesPDF
 
 
 #Código - Zona de funciones
@@ -122,6 +123,7 @@ def pPrincipal():
     mAsignaciones = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Asignaciones Docentes", menu=mAsignaciones)
     mAsignaciones.add_command(label="Asignaciones Profesores", command=info_asignaciones)
+    mAsignaciones.add_command(label="Listados Cursos, Cargos...", command=lambda: VentanaReportesPDF(ventana) )
 
     #Menú Trayectoria Docente
     mAsignaciones = tk.Menu(barramenu, tearoff=0)

@@ -1,360 +1,185 @@
-# ==========================================================
-# PRUEBA COMPLETA DEL IMPORTADOR DE ASIGNACIONES
-# ==========================================================
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox, ttk
+import os
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from importador_asignaciones import (
-    obtener_archivos_excel,
-    analizar_archivo,
-    importar_registros
-)
-
-from database import conectar
-
-
-# ==========================================================
-# ENCABEZADO
-# ==========================================================
-
-print("=" * 70)
-print(" PRUEBA COMPLETA DEL IMPORTADOR DE ASIGNACIONES")
-print("=" * 70)
+# NOMBRE DE TU BASE DE DATOS REAL
+NOMBRE_BD = "bdescuela.db"  # Cambiá por el nombre de tu archivo .db
 
 
-# ==========================================================
-# 1. BUSCAR ARCHIVOS EXCEL
-# ==========================================================
+def obtener_conexion():
+    return sqlite3.connect(NOMBRE_BD)
 
-archivos = obtener_archivos_excel()
+def salir():
+    ventana.destroy()
 
-print("\nARCHIVOS ENCONTRADOS")
-print("-" * 70)
+# ---------------------------------------------------------
+# CONSULTA SQL CON FILTRO DOBLE (AND)
+# ---------------------------------------------------------
+def consultar_datos_doble(campo1, valor1, campo2=None, valor2=None):
+    conn = obtener_conexion()
+    cursor = conn.cursor()
 
-if not archivos:
+    query = """
+        SELECT 
+            p.apellido || ' ' || p.nombre AS docente,
+            COALESCE(m.nombre, a.cargo) AS materia_o_cargo,
+            a.dia,
+            a.curso,
+            a.turno,
+            a.hentrada,
+            a.hsalida,
+            a.situacion_revista
+        FROM asignacion a
+        LEFT JOIN profesores p ON a.id_docente = p.id_docente
+        LEFT JOIN materias m ON a.id_materia = m.id_materia
+        WHERE a.{} LIKE ?
+    """
+    params = [f"%{valor1}%"]
 
-    print("No se encontraron archivos Excel.")
+    # Si se especificó un segundo filtro válido, agregamos el AND
+    if campo2 and valor2:
+        query += f" AND a.{campo2} LIKE ?"
+        params.append(f"%{valor2}%")
 
-    raise SystemExit
+    query += " ORDER BY a.dia ASC, a.hentrada ASC"
 
-for numero, archivo in enumerate(
-    archivos,
-    start=1
-):
-
-    print(
-        f"{numero}. {archivo}"
-    )
-
-
-# ==========================================================
-# 2. TOMAR EL PRIMER ARCHIVO
-# ==========================================================
-
-archivo = archivos[0]
-
-print("\n" + "=" * 70)
-print("ANALIZANDO ARCHIVO")
-print("=" * 70)
-
-print(archivo)
-
-
-# ==========================================================
-# 3. ANALIZAR
-# ==========================================================
-
-resultado = analizar_archivo(
-    archivo
-)
+    cursor.execute(query.format(campo1), params)
+    registros = cursor.fetchall()
+    conn.close()
+    return registros
 
 
-# ==========================================================
-# 4. RESULTADO GENERAL
-# ==========================================================
+# ---------------------------------------------------------
+# GENERACIÓN DEL PDF
+# ---------------------------------------------------------
 
-print("\nRESULTADO DEL ANÁLISIS")
-print("-" * 70)
+def generar_pdf_desde_interfaz():
+    campo1 = combo_campo1.get()
+    valor1 = entry_valor1.get().strip()
 
-print(
-    "Columnas correctas :",
-    resultado["columnas_ok"]
-)
+    campo2 = combo_campo2.get()
+    valor2 = entry_valor2.get().strip()
 
-print(
-    "Total registros    :",
-    resultado["total"]
-)
+    if not valor1:
+        messagebox.showwarning("Atención", "Ingrese al menos el primer valor para filtrar.", parent=ventana)
+        return
 
-print(
-    "Correctos          :",
-    resultado["correctos"]
-)
-
-print(
-    "Errores            :",
-    resultado["errores"]
-)
-
-print(
-    "Advertencias       :",
-    resultado["advertencias"]
-)
-
-
-# ==========================================================
-# 5. ERRORES
-# ==========================================================
-
-if resultado["detalle_errores"]:
-
-    print("\nERRORES")
-    print("-" * 70)
-
-    for error in resultado[
-        "detalle_errores"
-    ]:
-
-        print(
-            f"Fila {error['fila']}:"
+    try:
+        registros = consultar_datos_doble(
+            campo1, valor1,
+            campo2 if campo2 != "Ninguno" else None,
+            valor2 if campo2 != "Ninguno" else None
         )
+    except sqlite3.Error as e:
+        messagebox.showerror("Error de Base de Datos", f"No se pudo consultar la BD:\n{e}", parent=ventana)
+        return
 
-        for mensaje in error[
-            "errores"
-        ]:
+    if not registros:
+        messagebox.showinfo("Sin resultados", "No se encontraron registros que coincidan con los criterios.", parent=ventana)
+        return
 
-            print(
-                f"   - {mensaje}"
-            )
+    # ---------------------------------------------------------
+    # GESTIÓN DE CARPETAS Y RUTA DE SALIDA
+    # ---------------------------------------------------------
+    # Directorio actual donde está el script
+    dir_actual = os.path.dirname(os.path.abspath(__file__))
+    
+    # Crear la estructura de carpetas: reportes/pdf/Listados_cursos
+    carpeta_destino = os.path.join(dir_actual, "reportes", "pdf", "Listados_cursos")
+    os.makedirs(carpeta_destino, exist_ok=True)
 
+    # Nombre del archivo
+    valor1_limpio = valor1.replace("°", "").replace(" ", "_")
+    nombre_archivo = f"reporte_{campo1}_{valor1_limpio}.pdf"
+    
+    # Ruta completa donde se guardará el PDF
+    ruta_pdf = os.path.join(carpeta_destino, nombre_archivo)
 
-# ==========================================================
-# 6. ADVERTENCIAS
-# ==========================================================
-
-if resultado["detalle_advertencias"]:
-
-    print("\nADVERTENCIAS")
-    print("-" * 70)
-
-    for advertencia in resultado[
-        "detalle_advertencias"
-    ]:
-
-        print(
-            f"Fila {advertencia['fila']}:"
-        )
-
-        for mensaje in advertencia[
-            "advertencias"
-        ]:
-
-            print(
-                f"   - {mensaje}"
-            )
-
-
-# ==========================================================
-# 7. REGISTROS PREPARADOS
-# ==========================================================
-
-print("\nREGISTROS ANALIZADOS")
-print("-" * 70)
-
-for registro in resultado[
-    "registros"
-]:
-
-    print(
-        f"\nFila Excel: "
-        f"{registro['fila_excel']}"
+    # ---------------------------------------------------------
+    # GENERACIÓN DEL PDF CON REPORTLAB
+    # ---------------------------------------------------------
+    doc = SimpleDocTemplate(
+        ruta_pdf,  # <--- Se pasa la ruta completa
+        pagesize=landscape(A4),
+        rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20
     )
 
-    print(
-        f"  DNI:                  "
-        f"{registro['dni']}"
-    )
+    story = []
+    styles = getSampleStyleSheet()
 
-    print(
-        f"  ID Docente:           "
-        f"{registro['id_docente']}"
-    )
+    subtitulo = f"{campo1.upper()}: {valor1}"
+    if campo2 != "Ninguno" and valor2:
+        subtitulo += f" | {campo2.upper()}: {valor2}"
 
-    print(
-        f"  Materia:              "
-        f"{registro['materia']}"
-    )
+    story.append(Paragraph(f"<b>Listado de Asignaciones — {subtitulo}</b>", styles["Title"]))
+    story.append(Spacer(1, 15))
 
-    print(
-        f"  ID Materia:           "
-        f"{registro['id_materia']}"
-    )
+    headers = ["Docente", "Materia / Cargo", "Día", "Curso", "Turno", "H. Entrada", "H. Salida", "Revista"]
+    tabla_datos = [headers] + registros
 
-    print(
-        f"  Día:                  "
-        f"{registro['dia']}"
-    )
+    tabla = Table(tabla_datos, colWidths=[150, 150, 70, 60, 60, 75, 75, 80], repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1A365D')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN', (0,1), (1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E0')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#EDF2F7')]),
+    ]))
 
-    print(
-        f"  Cargo:                "
-        f"{registro['cargo']}"
-    )
+    story.append(tabla)
+    doc.build(story)
 
-    print(
-        f"  Módulos:              "
-        f"{registro['modulos']}"
-    )
+    messagebox.showinfo("Éxito", f"PDF generado correctamente en:\n{ruta_pdf}", parent=ventana)
 
-    print(
-        f"  Curso:                "
-        f"{registro['curso']}"
-    )
+# ---------------------------------------------------------
+# INTERFAZ GRÁFICA TKINTER (CON FILTRO DOBLE)
+# ---------------------------------------------------------
+ventana = tk.Tk()
+ventana.title("Listados PDF de Cursos, Cargos...")
+ventana.geometry("600x400")
+ventana.resizable(False, False)
 
-    print(
-        f"  Turno:                "
-        f"{registro['turno']}"
-    )
+frame = ttk.LabelFrame(ventana, text=" Configuración de Filtros ", padding=15)
+frame.pack(fill="both", expand=True, padx=15, pady=15)
 
-    print(
-        f"  Entrada:              "
-        f"{registro['hentrada']}"
-    )
+campos_disponibles = ["curso", "cargo", "dia", "turno", "situacion_revista", "activo"]
 
-    print(
-        f"  Salida:               "
-        f"{registro['hsalida']}"
-    )
+# --- FILTRO 1 ---
+ttk.Label(frame, text="Primer campo:").grid(row=0, column=0, sticky="w", pady=5)
+combo_campo1 = ttk.Combobox(frame, values=campos_disponibles, state="readonly", width=18)
+combo_campo1.current(0)  # curso
+combo_campo1.grid(row=0, column=1, pady=5, padx=5)
 
-    print(
-        f"  Situación de Revista: "
-        f"{registro['situacion_revista']}"
-    )
+entry_valor1 = ttk.Entry(frame, width=15)
+entry_valor1.insert(0, "1°1°")
+entry_valor1.grid(row=0, column=2, pady=5, padx=5)
 
-    print(
-        f"  Toma de Posesión:     "
-        f"{registro['toma_pos']}"
-    )
+# --- FILTRO 2 (OPCIONAL) ---
+campos_filtro2 = ["Ninguno"] + campos_disponibles
 
-    print(
-        f"  Cese:                 "
-        f"{registro['fecha_cese']}"
-    )
+ttk.Label(frame, text="Segundo campo:").grid(row=1, column=0, sticky="w", pady=5)
+combo_campo2 = ttk.Combobox(frame, values=campos_filtro2, state="readonly", width=18)
+combo_campo2.current(2)  # dia por defecto
+combo_campo2.grid(row=1, column=1, pady=5, padx=5)
 
-    print(
-        f"  Activo:               "
-        f"{registro['activo']}"
-    )
+entry_valor2 = ttk.Entry(frame, width=15)
+entry_valor2.insert(0, "Lunes")
+entry_valor2.grid(row=1, column=2, pady=5, padx=5)
 
-    print(
-        f"  Estado:               "
-        f"{registro['estado']}"
-    )
+# --- BOTÓN ---
+btn_generar = ttk.Button(frame, text="📄 Generar PDF", command=generar_pdf_desde_interfaz)
+btn_generar.grid(row=2, column=0, columnspan=3, pady=15)
 
+btn_generar = ttk.Button(frame, text="❌ Cerrar Listados", command=salir)
+btn_generar.grid(row=2, column=2, columnspan=3,padx=15, pady=15)
 
-# ==========================================================
-# 8. CONTAR ASIGNACIONES ANTES DE IMPORTAR
-# ==========================================================
-
-conn = conectar()
-
-cursor = conn.cursor()
-
-cursor.execute(
-    "SELECT COUNT(*) FROM asignacion"
-)
-
-total_antes = cursor.fetchone()[0]
-
-conn.close()
-
-print("\n" + "=" * 70)
-print("ESTADO DE LA BASE ANTES DE IMPORTAR")
-print("=" * 70)
-
-print(
-    "Asignaciones existentes:",
-    total_antes
-)
-
-
-# ==========================================================
-# 9. DECIDIR SI SE PUEDE IMPORTAR
-# ==========================================================
-
-if resultado["errores"] > 0:
-
-    print("\n" + "=" * 70)
-    print("IMPORTACIÓN CANCELADA")
-    print("=" * 70)
-
-    print(
-        "\nNo se importará ningún registro "
-        "porque existen errores."
-    )
-
-    print(
-        f"Errores encontrados: "
-        f"{resultado['errores']}"
-    )
-
-else:
-
-    print("\n" + "=" * 70)
-    print("IMPORTANDO REGISTROS")
-    print("=" * 70)
-
-    ok, mensaje = importar_registros(
-        resultado
-    )
-
-    print("\nResultado:")
-    print(mensaje)
-
-    # ======================================================
-    # 10. CONTAR DESPUÉS DE IMPORTAR
-    # ======================================================
-
-    if ok:
-
-        conn = conectar()
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT COUNT(*) FROM asignacion"
-        )
-
-        total_despues = cursor.fetchone()[0]
-
-        conn.close()
-
-        print("\n" + "=" * 70)
-        print("ESTADO DE LA BASE DESPUÉS DE IMPORTAR")
-        print("=" * 70)
-
-        print(
-            "Asignaciones antes :",
-            total_antes
-        )
-
-        print(
-            "Asignaciones después:",
-            total_despues
-        )
-
-        diferencia = (
-            total_despues -
-            total_antes
-        )
-
-        print(
-            "Nuevas asignaciones:",
-            diferencia
-        )
-
-
-# ==========================================================
-# FIN
-# ==========================================================
-
-print("\n" + "=" * 70)
-print(" FIN DE LA PRUEBA")
-print("=" * 70)
+ventana.mainloop()
