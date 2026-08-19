@@ -29,6 +29,7 @@ from dias_no_laborables import ventana_dias_no_laborables
 from ventana_importacion import VentanaImportacion
 from ventana_importacion_asignaciones import abrir_ventana_importacion_asignaciones
 from listadoTodo import VentanaReportesPDF
+from ventana_manual import abrir_manual
 
 
 #Código - Zona de funciones
@@ -154,6 +155,7 @@ def pPrincipal():
     mAcerca = tk.Menu(barramenu, tearoff=0)
     barramenu.add_cascade(label="Ayuda", menu=mAcerca)
     mAcerca.add_command(label="Acerca de la App", command=acerca_de)
+    mAcerca.add_command(label="Manual de usuario", command=lambda:abrir_manual(ventana))
     
   # ---------------------------------- LOGO PRINCIPAL -------------------------------------
    
