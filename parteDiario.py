@@ -198,6 +198,24 @@ def abrir_parte_diario():
                             AND a2.activo = 1
                         )
                     )
+            ORDER BY
+                CASE a.cargo
+                    WHEN 'Director' THEN 1
+                    WHEN 'ViceDirector' THEN 2
+                    WHEN 'Secretario' THEN 3
+                    WHEN 'EMATP' THEN 4
+                    WHEN 'Enc.Laboratorio' THEN 5
+                    WHEN 'Jefe Dpto' THEN 6
+                    WHEN 'Preceptor' THEN 7
+                    WHEN 'Profesor' THEN 8
+                    WHEN 'Bibliotecario' THEN 9
+                    WHEN 'Auxiliar' THEN 10
+                    WHEN 'Taller' THEN 11
+                    ELSE 99
+                END,
+                a.hentrada ASC,
+                p.apellido COLLATE NOCASE ASC,
+                p.nombre COLLATE NOCASE ASC
         """
 
         try:

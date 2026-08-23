@@ -1114,6 +1114,108 @@ def info_profesor():
     )
 
     # ================================================================================
+    # MOSTRAR FICHA DEL PROFESOR
+    # ================================================================================
+
+    def mostrar_ficha():
+
+        if not id_seleccionado:
+
+            messagebox.showwarning(
+                "Atención",
+                "Seleccione un registro para ver la ficha",
+                parent=ventana
+            )
+
+            return
+
+        ficha = tk.Toplevel(ventana)
+        ficha.title("Ficha del Profesor")
+        ficha.geometry("650x380")
+        ficha.resizable(False, False)
+        ficha.configure(bg="#f4f4f4")
+
+        # =========================
+        # ENCABEZADO
+        # =========================
+
+        frame_header = tk.Frame(ficha, bg="#2c3e50", height=70)
+        frame_header.pack(fill="x")
+        frame_header.pack_propagate(False)
+
+        tk.Label(
+            frame_header,
+            text=f"{apellido.get()}, {nombre.get()}",
+            font=("Arial", 16, "bold"),
+            bg="#2c3e50",
+            fg="white"
+        ).pack(pady=15)
+
+        # =========================
+        # CUERPO - GRID DE DATOS
+        # =========================
+
+        frame_ficha = tk.Frame(ficha, bg="#f4f4f4", padx=20, pady=20)
+        frame_ficha.pack(fill="both", expand=True)
+
+        frame_ficha.columnconfigure(1, weight=1)
+        frame_ficha.columnconfigure(3, weight=1)
+
+        def campo(fila, col_label, col_valor, etiqueta, valor):
+
+            tk.Label(
+                frame_ficha,
+                text=etiqueta,
+                font=("Arial", 12, "bold"),
+                bg="#f4f4f4",
+                fg="#555555",
+                anchor="w"
+            ).grid(row=fila, column=col_label, sticky="w", padx=(0, 5), pady=10)
+
+            tk.Label(
+                frame_ficha,
+                text=valor if valor else "-",
+                font=("Arial", 12),
+                bg="#f4f4f4",
+                fg="#1a1a1a",
+                anchor="w",
+                wraplength=180,
+                justify="left"
+            ).grid(row=fila, column=col_valor, sticky="w", padx=(0, 20), pady=10)
+
+        # Fila 0: DNI - CUIL
+        campo(0, 0, 1, "DNI:", dni.get())
+        campo(0, 2, 3, "CUIL:", cuil.get())
+
+        # Fila 1: Teléfono - Email
+        campo(1, 0, 1, "Teléfono:", telefono.get())
+        campo(1, 2, 3, "Email:", email.get())
+
+        # Fila 2: Dirección - Fecha Nacimiento
+        campo(2, 0, 1, "Dirección:", direccion.get())
+        campo(2, 2, 3, "Fecha Nac.:", fecha_nacimiento.get())
+
+        # =========================
+        # SEPARADOR
+        # =========================
+
+        ttk.Separator(ficha, orient="horizontal").pack(fill="x", padx=20)
+
+        # =========================
+        # BOTÓN CERRAR
+        # =========================
+
+        tk.Button(
+            ficha,
+            text="❌ Cerrar",
+            font=("Segoe UI Emoji", 11, "bold"),
+            command=ficha.destroy
+        ).pack(pady=15)
+
+        centrar_ventana(ficha)
+    # --------------------------------------------------------------------------------
+
+    # ================================================================================
     # LIMPIAR CAMPOS
     # ================================================================================
 
@@ -1200,6 +1302,18 @@ def info_profesor():
         padx=5
     )
 
+    
+    tk.Button(
+        frame_botones,
+        text="🪪 Ver Ficha",
+        font=("Segoe UI Emoji", 12, "bold"),
+        command=mostrar_ficha
+    ).grid(
+        row=0,
+        column=4,
+        padx=5
+    )
+
     tk.Button(
         frame_botones,
         text="❌ Cerrar",
@@ -1207,7 +1321,7 @@ def info_profesor():
         command=ventana.destroy
     ).grid(
         row=0,
-        column=4,
+        column=5,
         padx=5
     )
 
