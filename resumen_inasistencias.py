@@ -194,7 +194,7 @@ def buscar_resumen(
     mostrar_cargos(tree_cargos, resumen)
     mostrar_modulos(tree_modulos, resumen)
     mostrar_inasistencias(tree_licencias, resumen)
-    pprint(resumen)
+    
 # -----------------------------------------------------------------------------------
 
 # ============================================================

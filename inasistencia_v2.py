@@ -459,64 +459,587 @@ class InasistenciaDocente:
         messagebox.showinfo("OK", "Registro eliminado correctamente",parent=self.ventana)
     # -----------------------------------------------------------------------------
 
-    # =======================  exportación a pdf ==================================
+   # ======================= EXPORTACIÓN A PDF =======================
+
     def generar_pdf(self):
 
         try:
-            from reportlab.lib.pagesizes import letter
-            from reportlab.pdfgen import canvas
+
+            import os
+
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import (
+                getSampleStyleSheet,
+                ParagraphStyle
+            )
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT
+            from reportlab.lib.units import mm
+            from reportlab.platypus import (
+                SimpleDocTemplate,
+                Paragraph,
+                Spacer,
+                Table,
+                TableStyle,
+                HRFlowable
+            )
+
+            # ==========================================================
+            # CONEXIÓN A LA BASE DE DATOS
+            # ==========================================================
 
             conn = conectar()
             cursor = conn.cursor()
 
             cursor.execute("""
                 SELECT
-                    p.apellido || ' ' || p.nombre,
+                    p.apellido,
+                    p.nombre,
                     i.fecha_desde,
                     i.fecha_hasta,
                     i.motivo,
                     i.observacion
                 FROM inasistencia i
-                JOIN profesores p ON p.id_docente = i.id_docente
+                JOIN profesores p
+                    ON p.id_docente = i.id_docente
                 WHERE i.id_docente = ?
                 ORDER BY i.fecha_desde DESC
             """, (self.id_docente_actual,))
 
             datos = cursor.fetchall()
+
             conn.close()
 
+            # ==========================================================
+            # COMPROBAR DATOS
+            # ==========================================================
+
             if not datos:
-                messagebox.showwarning("Atención", "No hay datos para generar PDF",parent=self.ventana)
+
+                messagebox.showwarning(
+                    "Atención",
+                    "No hay inasistencias para generar el PDF.",
+                    parent=self.ventana
+                )
+
                 return
 
-            archivo = "inasistencias.pdf"
-            c = canvas.Canvas(archivo, pagesize=letter)
+            # ==========================================================
+            # DATOS DEL DOCENTE
+            # ==========================================================
 
-            y = 750
+            apellido = str(datos[0][0] or "").strip()
+            nombre = str(datos[0][1] or "").strip()
 
-            c.setFont("Helvetica-Bold", 14)
-            c.drawString(200, y, "REPORTE DE INASISTENCIAS")
-            y -= 40
+            docente = f"{apellido}, {nombre}"
 
-            c.setFont("Helvetica", 10)
+            # ==========================================================
+            # CARPETA DE DESTINO
+            # ==========================================================
 
-            for fila in datos:
+            carpeta_modulo = os.path.dirname(
+                os.path.abspath(__file__)
+            )
 
-                texto = f"{fila[0]} | {fila[1]} al {fila[2]} | {fila[3]} | {fila[4]}"
-                c.drawString(30, y, texto)
+            carpeta_reportes = os.path.join(
+                carpeta_modulo,
+                "reportes"
+            )
 
-                y -= 20
+            carpeta_pdf = os.path.join(
+                carpeta_reportes,
+                "pdf"
+            )
 
-                if y < 50:
-                    c.showPage()
-                    y = 750
+            carpeta_inasistencia = os.path.join(
+                carpeta_pdf,
+                "Inasistencia"
+            )
 
-            c.save()
+            os.makedirs(
+                carpeta_inasistencia,
+                exist_ok=True
+            )
 
-            messagebox.showinfo("OK", "PDF generado correctamente",parent=self.ventana)
+            # ==========================================================
+            # NOMBRE DEL ARCHIVO
+            # ==========================================================
+
+            nombre_archivo = f"Inasistencias_{apellido}_{nombre}.pdf"
+
+            caracteres_invalidos = '<>:"/\\|?*'
+
+            for caracter in caracteres_invalidos:
+                nombre_archivo = nombre_archivo.replace(
+                    caracter,
+                    "_"
+                )
+
+            archivo = os.path.join(
+                carpeta_inasistencia,
+                nombre_archivo
+            )
+
+            # ==========================================================
+            # CONFIGURACIÓN DEL DOCUMENTO
+            # ==========================================================
+
+            documento = SimpleDocTemplate(
+                archivo,
+                pagesize=A4,
+                rightMargin=18 * mm,
+                leftMargin=18 * mm,
+                topMargin=18 * mm,
+                bottomMargin=18 * mm
+            )
+
+            estilos = getSampleStyleSheet()
+
+            # ==========================================================
+            # ESTILOS
+            # ==========================================================
+
+            estilo_titulo = ParagraphStyle(
+                "Titulo",
+                parent=estilos["Heading1"],
+                fontName="Helvetica-Bold",
+                fontSize=17,
+                leading=20,
+                alignment=TA_CENTER,
+                textColor=colors.white
+            )
+
+            estilo_subtitulo = ParagraphStyle(
+                "Subtitulo",
+                parent=estilos["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=11,
+                leading=14,
+                alignment=TA_CENTER,
+                textColor=colors.white
+            )
+
+            estilo_etiqueta = ParagraphStyle(
+                "Etiqueta",
+                parent=estilos["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#555555")
+            )
+
+            estilo_valor = ParagraphStyle(
+                "Valor",
+                parent=estilos["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#1a1a1a")
+            )
+
+            estilo_observacion = ParagraphStyle(
+                "Observacion",
+                parent=estilos["Normal"],
+                fontName="Helvetica",
+                fontSize=9,
+                leading=12,
+                textColor=colors.HexColor("#1a1a1a")
+            )
+
+            estilo_pie = ParagraphStyle(
+                "Pie",
+                parent=estilos["Normal"],
+                fontName="Helvetica",
+                fontSize=8,
+                alignment=TA_CENTER,
+                textColor=colors.HexColor("#666666")
+            )
+
+            elementos = []
+
+            # ==========================================================
+            # ENCABEZADO
+            # ==========================================================
+
+            encabezado = Table(
+                [
+                    [
+                        Paragraph(
+                            "SISTEMA DE GESTIÓN EDUCATIVA",
+                            estilo_titulo
+                        )
+                    ],
+                    [
+                        Paragraph(
+                            "REPORTE DE INASISTENCIAS",
+                            estilo_subtitulo
+                        )
+                    ]
+                ],
+                colWidths=[174 * mm]
+            )
+
+            encabezado.setStyle(
+                TableStyle(
+                    [
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (-1, -1),
+                            colors.HexColor("#2c3e50")
+                        ),
+                        (
+                            "LEFTPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            10
+                        ),
+                        (
+                            "RIGHTPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            10
+                        ),
+                        (
+                            "TOPPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            9
+                        ),
+                        (
+                            "BOTTOMPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            9
+                        )
+                    ]
+                )
+            )
+
+            elementos.append(encabezado)
+
+            elementos.append(
+                Spacer(1, 7 * mm)
+            )
+
+            # ==========================================================
+            # DOCENTE
+            # ==========================================================
+
+            docente_tabla = Table(
+                [
+                    [
+                        Paragraph(
+                            "DOCENTE",
+                            estilo_etiqueta
+                        ),
+                        Paragraph(
+                            docente,
+                            ParagraphStyle(
+                                "NomeDocente",
+                                parent=estilo_valor,
+                                fontName="Helvetica-Bold",
+                                fontSize=12
+                            )
+                        )
+                    ]
+                ],
+                colWidths=[
+                    30 * mm,
+                    144 * mm
+                ]
+            )
+
+            docente_tabla.setStyle(
+                TableStyle(
+                    [
+                        (
+                            "BACKGROUND",
+                            (0, 0),
+                            (0, 0),
+                            colors.HexColor("#f4f4f4")
+                        ),
+                        (
+                            "BOX",
+                            (0, 0),
+                            (-1, -1),
+                            0.6,
+                            colors.HexColor("#cccccc")
+                        ),
+                        (
+                            "INNERGRID",
+                            (0, 0),
+                            (-1, -1),
+                            0.4,
+                            colors.HexColor("#dddddd")
+                        ),
+                        (
+                            "VALIGN",
+                            (0, 0),
+                            (-1, -1),
+                            "MIDDLE"
+                        ),
+                        (
+                            "LEFTPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            7
+                        ),
+                        (
+                            "RIGHTPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            7
+                        ),
+                        (
+                            "TOPPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            8
+                        ),
+                        (
+                            "BOTTOMPADDING",
+                            (0, 0),
+                            (-1, -1),
+                            8
+                        )
+                    ]
+                )
+            )
+
+            elementos.append(docente_tabla)
+
+            elementos.append(
+                Spacer(1, 7 * mm)
+            )
+
+            # ==========================================================
+            # CADA INASISTENCIA
+            # ==========================================================
+
+            for numero, fila in enumerate(datos, start=1):
+
+                fecha_desde = str(fila[2] or "").strip()
+                fecha_hasta = str(fila[3] or "").strip()
+                motivo = str(fila[4] or "").strip()
+                observacion = str(fila[5] or "").strip()
+
+                # ----------------------------------------------
+                # ENCABEZADO DEL REGISTRO
+                # ----------------------------------------------
+
+                titulo_registro = Table(
+                    [
+                        [
+                            Paragraph(
+                                f"INASISTENCIA N.º {numero}",
+                                ParagraphStyle(
+                                    "Registro",
+                                    parent=estilo_etiqueta,
+                                    fontName="Helvetica-Bold",
+                                    fontSize=10,
+                                    textColor=colors.white
+                                )
+                            )
+                        ]
+                    ],
+                    colWidths=[174 * mm]
+                )
+
+                titulo_registro.setStyle(
+                    TableStyle(
+                        [
+                            (
+                                "BACKGROUND",
+                                (0, 0),
+                                (-1, -1),
+                                colors.HexColor("#34495e")
+                            ),
+                            (
+                                "LEFTPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                8
+                            ),
+                            (
+                                "RIGHTPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                8
+                            ),
+                            (
+                                "TOPPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                6
+                            ),
+                            (
+                                "BOTTOMPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                6
+                            )
+                        ]
+                    )
+                )
+
+                elementos.append(titulo_registro)
+
+                # ----------------------------------------------
+                # DATOS DEL REGISTRO
+                # ----------------------------------------------
+
+                datos_inasistencia = [
+                    [
+                        Paragraph(
+                            "Período:",
+                            estilo_etiqueta
+                        ),
+                        Paragraph(
+                            f"{fecha_desde} al {fecha_hasta}",
+                            estilo_valor
+                        )
+                    ],
+                    [
+                        Paragraph(
+                            "Motivo:",
+                            estilo_etiqueta
+                        ),
+                        Paragraph(
+                            motivo if motivo else "-",
+                            estilo_valor
+                        )
+                    ],
+                    [
+                        Paragraph(
+                            "Observación:",
+                            estilo_etiqueta
+                        ),
+                        Paragraph(
+                            observacion if observacion else "-",
+                            estilo_observacion
+                        )
+                    ]
+                ]
+
+                tabla_inasistencia = Table(
+                    datos_inasistencia,
+                    colWidths=[
+                        30 * mm,
+                        144 * mm
+                    ]
+                )
+
+                tabla_inasistencia.setStyle(
+                    TableStyle(
+                        [
+                            (
+                                "GRID",
+                                (0, 0),
+                                (-1, -1),
+                                0.5,
+                                colors.HexColor("#d0d0d0")
+                            ),
+                            (
+                                "BACKGROUND",
+                                (0, 0),
+                                (0, -1),
+                                colors.HexColor("#f4f4f4")
+                            ),
+                            (
+                                "VALIGN",
+                                (0, 0),
+                                (-1, -1),
+                                "TOP"
+                            ),
+                            (
+                                "LEFTPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                7
+                            ),
+                            (
+                                "RIGHTPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                7
+                            ),
+                            (
+                                "TOPPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                7
+                            ),
+                            (
+                                "BOTTOMPADDING",
+                                (0, 0),
+                                (-1, -1),
+                                7
+                            )
+                        ]
+                    )
+                )
+
+                elementos.append(tabla_inasistencia)
+
+                elementos.append(
+                    Spacer(1, 5 * mm)
+                )
+
+            # ==========================================================
+            # PIE DEL DOCUMENTO
+            # ==========================================================
+
+            elementos.append(
+                HRFlowable(
+                    width="100%",
+                    thickness=0.6,
+                    color=colors.HexColor("#cccccc"),
+                    spaceBefore=5,
+                    spaceAfter=7
+                )
+            )
+
+            elementos.append(
+                Paragraph(
+                    f"Total de inasistencias registradas: {len(datos)}",
+                    estilo_pie
+                )
+            )
+
+            elementos.append(
+                Spacer(1, 2 * mm)
+            )
+
+            elementos.append(
+                Paragraph(
+                    "Documento generado por el Sistema de Gestión Educativa (SGE)",
+                    estilo_pie
+                )
+            )
+
+            # ==========================================================
+            # GENERAR DOCUMENTO
+            # ==========================================================
+
+            documento.build(elementos)
+
+            messagebox.showinfo(
+                "PDF generado",
+                "El reporte de inasistencias fue generado correctamente.\n\n"
+                f"Guardado en:\n{archivo}",
+                parent=self.ventana
+            )
 
         except Exception as e:
-            messagebox.showerror("Error PDF", str(e),parent=self.ventana)
+
+            messagebox.showerror(
+                "Error PDF",
+                f"No se pudo generar el PDF.\n\n"
+                f"Detalle:\n{e}",
+                parent=self.ventana
+            )
+
     # -----------------------------------------------------------------------------
 
     # =============================================================================

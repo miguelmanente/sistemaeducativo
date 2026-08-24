@@ -24,6 +24,7 @@ from utilidades import (
     generar_cuil,
     normalizar_fecha
 )
+from exportarPDF import exportar_ficha_docente
 
 
 # ----------- Función que maneja toda la ventana datos personales del profesor ------------
@@ -1131,7 +1132,7 @@ def info_profesor():
 
         ficha = tk.Toplevel(ventana)
         ficha.title("Ficha del Profesor")
-        ficha.geometry("650x380")
+        ficha.state("zoomed")
         ficha.resizable(False, False)
         ficha.configure(bg="#f4f4f4")
 
@@ -1201,17 +1202,61 @@ def info_profesor():
 
         ttk.Separator(ficha, orient="horizontal").pack(fill="x", padx=20)
 
+        def exportar_pdf():
+            exportar_ficha_docente(
+            apellido=apellido.get(),
+            nombre=nombre.get(),
+            dni=dni.get(),
+            cuil=cuil.get(),
+            telefono=telefono.get(),
+            email=email.get(),
+            direccion=direccion.get(),
+            fecha_nacimiento=fecha_nacimiento.get(),
+            parent=ficha
+        )
+
         # =========================
-        # BOTÓN CERRAR
+        # BOTONES
         # =========================
+
+        frame_botones = tk.Frame(
+            ficha,
+            bg="#f4f4f4"
+        )
+
+        frame_botones.pack(pady=15)
 
         tk.Button(
-            ficha,
+            frame_botones,
+            text="📄 Exportar a PDF",
+            font=("Segoe UI Emoji", 11, "bold"),
+            bg="#2c3e50",
+            fg="white",
+            activebackground="#34495e",
+            activeforeground="white",
+            padx=15,
+            pady=6,
+            cursor="hand2",
+            command=exportar_pdf
+        ).pack(
+            side="left",
+            padx=8
+        )
+
+        tk.Button(
+            frame_botones,
             text="❌ Cerrar",
             font=("Segoe UI Emoji", 11, "bold"),
+            padx=15,
+            pady=6,
+            cursor="hand2",
             command=ficha.destroy
-        ).pack(pady=15)
+        ).pack(
+            side="left",
+            padx=8
+        )
 
+        
         centrar_ventana(ficha)
     # --------------------------------------------------------------------------------
 

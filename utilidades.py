@@ -15,6 +15,8 @@ Autor: Miguel Ángel Manente
 # IMPORTACIONES
 # ==========================================================
 
+from datetime import datetime
+
 
 # ==========================================================
 # HORARIOS
@@ -58,6 +60,7 @@ def normalizar_hora(hora):
 def hora_a_minutos():
     pass
 
+
 def minutos_a_hora():
     pass
 
@@ -65,6 +68,7 @@ def minutos_a_hora():
 # ==========================================================
 # TEXTO
 # ==========================================================
+
 def normalizar_nombre(texto):
     """
     Normaliza nombres y apellidos.
@@ -98,6 +102,7 @@ def normalizar_nombre(texto):
 
     return " ".join(palabras)
 
+
 def normalizar_apellido():
     pass
 
@@ -105,6 +110,7 @@ def normalizar_apellido():
 # ==========================================================
 # FECHAS
 # ==========================================================
+
 def normalizar_fecha(fecha):
     """
     Normaliza una fecha al formato DD/MM/AAAA.
@@ -114,6 +120,15 @@ def normalizar_fecha(fecha):
         "05/7/2026"   -> "05/07/2026"
         " 5/07/2026 " -> "05/07/2026"
 
+    El año debe tener exactamente 4 dígitos.
+
+    Ejemplos inválidos:
+        "01/06/20"     -> None
+        "01/06/00"     -> None
+        "01/06/0020"   -> None
+        "31/02/2020"   -> None
+        "01/13/2020"   -> None
+
     Retorna:
         str  -> Fecha normalizada.
         None -> Si la fecha no puede interpretarse.
@@ -122,7 +137,7 @@ def normalizar_fecha(fecha):
     if fecha is None:
         return None
 
-    fecha = fecha.strip()
+    fecha = str(fecha).strip()
 
     # Si el usuario no ingresó una fecha,
     # devolvemos una cadena vacía.
@@ -136,19 +151,34 @@ def normalizar_fecha(fecha):
 
     dia, mes, anio = partes
 
+    # Los tres componentes deben contener solamente dígitos.
     if not (dia.isdigit() and mes.isdigit() and anio.isdigit()):
+        return None
+
+    # El año DEBE tener exactamente 4 dígitos.
+    # Esto evita convertir, por ejemplo:
+    # 01/06/20 -> 01/06/0020
+    if len(anio) != 4:
         return None
 
     dia = int(dia)
     mes = int(mes)
     anio = int(anio)
 
-    return f"{dia:02d}/{mes:02d}/{anio:04d}"
+    # Validamos que la fecha exista realmente.
+    try:
+        fecha_valida = datetime(anio, mes, dia)
+    except ValueError:
+        return None
+
+    return fecha_valida.strftime("%d/%m/%Y")
+
+
 # ---------------------------------------------------------------------------
 
-# ==============================================================================
+# ============================================================================
 # NORMALIZACIÓN DE CUIL
-# ==============================================================================
+# ============================================================================
 
 def normalizar_cuil(cuil):
     """
@@ -181,9 +211,12 @@ def normalizar_cuil(cuil):
         return None
 
     return f"{cuil[:2]}-{cuil[2:10]}-{cuil[10]}"
-#---------------------------------------------------------------------------
 
-#======================= GENERAR CUIL AUTOMATICO ===========================
+
+# ---------------------------------------------------------------------------
+
+# ======================== GENERAR CUIL AUTOMATICO ===========================
+
 def generar_cuil(dni, prefijo="20"):
     """
     Genera un CUIL válido a partir de un DNI.
@@ -208,7 +241,7 @@ def generar_cuil(dni, prefijo="20"):
     # Completa con cero si tiene 7 dígitos
     dni = dni.zfill(8)
 
-    #prefijo = "20" if sexo.upper() == "M" else "27"
+    # prefijo = "20" if sexo.upper() == "M" else "27"
 
     base = prefijo + dni
 
@@ -221,15 +254,23 @@ def generar_cuil(dni, prefijo="20"):
 
     if verificador == 11:
         verificador = 0
+
     elif verificador == 10:
+
         # Regla especial
         if prefijo == "20":
             prefijo = "23"
+
         elif prefijo == "27":
             prefijo = "23"
 
         base = prefijo + dni
-        suma = sum(int(d) * c for d, c in zip(base, coeficientes))
+
+        suma = sum(
+            int(d) * c
+            for d, c in zip(base, coeficientes)
+        )
+
         resto = suma % 11
         verificador = 11 - resto
 
@@ -237,9 +278,12 @@ def generar_cuil(dni, prefijo="20"):
             verificador = 0
 
     return f"{prefijo}-{dni}-{verificador}"
-#---------------------------------------------------------------------------
 
-# ======================== NORMALIZACIÓN DE TELÉFONO ===========================
+
+# ---------------------------------------------------------------------------
+
+# ========================= NORMALIZACIÓN DE TELÉFONO =========================
+
 def normalizar_telefono(telefono):
     """
     Normaliza un teléfono al formato 0336-1234567.
@@ -269,15 +313,20 @@ def normalizar_telefono(telefono):
         return None
 
     return f"{telefono[:4]}-{telefono[4:]}"
+
+
 # ---------------------------------------------------------------------------
 
 def generar_periodo():
     pass
 
+
 def calcular_dias_trabajados():
     pass
 
-# ========================= Da formato all dni para mostrarlo ==========================
+
+# ======================== DAR FORMATO AL DNI PARA MOSTRAR ====================
+
 def formatear_dni(dni):
     """
     Formatea un DNI para mostrar.
@@ -296,7 +345,9 @@ def formatear_dni(dni):
         return dni
 
     return f"{int(dni):,}".replace(",", ".")
-#------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
 
 # ==========================================================
 # FORMATEO DE CUIL
@@ -327,9 +378,12 @@ def formatear_cuil(cuil):
         return cuil
 
     return f"{cuil[:2]}-{cuil[2:10]}-{cuil[10]}"
-#-----------------------------------------------------------------------------
 
-# ===================== FORMATEO DE TELEFONO =================================
+
+# -----------------------------------------------------------------------------
+
+# ===================== FORMATEO DE TELEFONO ================================
+
 def formatear_telefono(telefono):
     """
     Devuelve el teléfono listo para mostrar.
@@ -346,9 +400,12 @@ def formatear_telefono(telefono):
         return ""
 
     return telefono
-#-----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
 
 # ======================== FORMATEO DE FECHAS ================================
+
 def formatear_fecha(fecha):
     """
     Devuelve una fecha lista para mostrar.
@@ -363,4 +420,6 @@ def formatear_fecha(fecha):
         return ""
 
     return fecha
-#-----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
