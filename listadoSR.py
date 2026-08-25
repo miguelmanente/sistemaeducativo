@@ -150,7 +150,7 @@ class ModuloListados:
         # Crear el directorio si aún no existe
         os.makedirs(self.output_dir, exist_ok=True)
 
-        nombre_archivo = f"Listado_{situacion}es.pdf"
+        nombre_archivo = f"Listado_{situacion}.pdf"
         ruta_completa = os.path.join(self.output_dir, nombre_archivo)
 
         doc = SimpleDocTemplate(
@@ -190,7 +190,7 @@ class ModuloListados:
         )
         elements.append(
             Paragraph(
-                f"LISTADO DE DOCENTES: {situacion.upper()}S", estilo_titulo
+                f"LISTADO DE DOCENTES: {situacion.upper()}", estilo_titulo
             )
         )
 
