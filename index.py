@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
-from database import validar_usuario, crear_tablas  # ¡Agregá crear_tablas acá!
+from database import registrar_usuario, validar_usuario, crear_tablas  # ¡Agregá crear_tablas acá!
 from app import pPrincipal
 from centraVent import centrar_ventana, cventana
 from registrar import ventana_registro

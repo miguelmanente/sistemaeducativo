@@ -61,7 +61,7 @@ def validar_dni(dni, id_docente=None):
     if not dni.isdigit():
         return False
 
-    if len(dni) < 7 or len(dni) > 8:
+    if len(dni) > 8:
         return False
 
     return True

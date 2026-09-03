@@ -430,20 +430,20 @@ def info_profesor():
     # =========================
 
     def validar_dni(dni):
-        return dni.isdigit() and len(dni) in (7, 8)
+        return dni.isdigit() and len(dni) == 8
 
     def validar_dni_evento(event):
         valor = dni.get()
 
-        if valor.isdigit() and len(valor) in (7, 8):
+        if len(valor) == 8 and valor.isdigit():
             marcar_valido(entry_dni)
         else:
             marcar_error(entry_dni)
 
-    entry_dni.bind(
-        "<KeyRelease>",
-        validar_dni_evento
-    )
+        entry_dni.bind(
+            "<KeyRelease>",
+            validar_dni_evento
+        )
 
     # =========================
     # VALIDACIÓN EMAIL
@@ -482,10 +482,7 @@ def info_profesor():
         if not item:
             return
 
-        valores = tree.item(
-            item[0],
-            "values"
-        )
+        valores = tree.item(item[0], "values")
 
         id_seleccionado = valores[0]
 
@@ -498,10 +495,8 @@ def info_profesor():
         direccion.set(valores[7])
         fecha_nacimiento.set(valores[8])
 
-    tree.bind(
-        "<<TreeviewSelect>>",
-        seleccionar_registro
-    )
+    tree.bind("<<TreeviewSelect>>", seleccionar_registro )
+    # -------------------------------------------------------------------------------
 
     # ================================================================================
     # CARGA DE DATOS
@@ -1113,6 +1108,7 @@ def info_profesor():
         "<Key>",
         buscar_treeview
     )
+    # -------------------------------------------------------------------------------
 
     # ================================================================================
     # MOSTRAR FICHA DEL PROFESOR
