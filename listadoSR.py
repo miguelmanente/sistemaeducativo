@@ -63,6 +63,7 @@ class ModuloListados:
             ("Titulares", "Titular"),
             ("Provisorios", "Provisorio"),
             ("Suplentes", "Suplente"),
+            ("Interinos", "Interino"),
         ]
 
         for texto, valor in opciones:
