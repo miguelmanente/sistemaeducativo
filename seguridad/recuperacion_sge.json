@@ -1,0 +1,11 @@
+{
+    "version": 1,
+    "algoritmo": "scrypt_fernet",
+    "salt": "UtuoNb1IaNM7hWRFIN+3BQ==",
+    "scrypt": {
+        "n": 16384,
+        "r": 8,
+        "p": 1
+    },
+    "clave_datos_cifrada": "gAAAAABqpb5IZFYGoOsgstqqoUOGUeDd8GYnjfmgBBbq-02woaR2cO_M_c7H351IYLJr1FkYagc4YkZtVn6HIzOLrkFgtStmhl_Xxlu-GM2u1M1-WP8vqeuIO5FGWYIxAs3a8bFkpfR9"
+}
