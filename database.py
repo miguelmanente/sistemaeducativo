@@ -3,10 +3,624 @@
 # =====================================================
 
 # ------------------------ LIBRERÍAS -------------------
-import sqlite3
+
+from sqlcipher3 import dbapi2 as sqlite3
 import hashlib
 import os
-import sys
+import shutil
+
+import seguridad_bd
+
+
+# =====================================================
+#              OBTENER RUTA DE LA BASE
+# =====================================================
+
+def obtener_ruta_bd():
+
+    ruta_datos = (
+        seguridad_bd.obtener_ruta_datos()
+    )
+
+    os.makedirs(
+        ruta_datos,
+        exist_ok=True
+    )
+
+    return os.path.join(
+        ruta_datos,
+        "bdescuela.db"
+    )
+
+
+# =====================================================
+#          OBTENER RUTA DE LA BASE ANTIGUA
+# =====================================================
+
+def obtener_ruta_bd_antigua():
+
+    if getattr(
+        __import__("sys"),
+        "frozen",
+        False
+    ):
+
+        base_dir = os.path.dirname(
+            __import__("sys").executable
+        )
+
+    else:
+
+        base_dir = os.path.dirname(
+            os.path.abspath(__file__)
+        )
+
+    return os.path.join(
+        base_dir,
+        "bdescuela.db"
+    )
+
+
+# =====================================================
+#       CONFIGURAR CLAVE DE SQLCIPHER
+# =====================================================
+
+def configurar_clave_sqlcipher(
+    conexion,
+    clave
+):
+
+    if not isinstance(
+        clave,
+        bytes
+    ):
+        raise TypeError(
+            "La clave de la base de datos "
+            "debe ser de tipo bytes."
+        )
+
+    if len(clave) != 32:
+        raise ValueError(
+            "La clave de la base de datos "
+            "debe tener exactamente 32 bytes."
+        )
+
+    clave_sql = clave.hex()
+
+    conexion.execute(
+        f'PRAGMA key = "x\'{clave_sql}\'"'
+    )
+
+
+# =====================================================
+#       VERIFICAR BASE SQLCIPHER
+# =====================================================
+
+def verificar_bd_sqlcipher(
+    ruta_bd,
+    clave
+):
+
+    if not os.path.isfile(
+        ruta_bd
+    ):
+        return False
+
+    conexion = None
+
+    try:
+
+        conexion = sqlite3.connect(
+            ruta_bd
+        )
+
+        configurar_clave_sqlcipher(
+            conexion,
+            clave
+        )
+
+        conexion.execute(
+            "SELECT count(*) FROM sqlite_master"
+        ).fetchone()
+
+        return True
+
+    except Exception:
+
+        return False
+
+    finally:
+
+        if conexion is not None:
+
+            conexion.close()
+
+
+# =====================================================
+#       VERIFICAR BASE SQLITE NORMAL
+# =====================================================
+
+def verificar_bd_sqlite_normal(
+    ruta_bd
+):
+
+    if not os.path.isfile(
+        ruta_bd
+    ):
+        return False
+
+    # -------------------------------------------------
+    # Importamos sqlite3 estándar únicamente para
+    # comprobar si la base antigua es una SQLite
+    # normal.
+    # -------------------------------------------------
+
+    import sqlite3 as sqlite_normal
+
+    conexion = None
+
+    try:
+
+        conexion = sqlite_normal.connect(
+            ruta_bd
+        )
+
+        conexion.execute(
+            "SELECT count(*) FROM sqlite_master"
+        ).fetchone()
+
+        return True
+
+    except Exception:
+
+        return False
+
+    finally:
+
+        if conexion is not None:
+
+            conexion.close()
+
+
+# =====================================================
+#       MIGRAR BASE ANTIGUA
+# =====================================================
+
+def migrar_base_antigua():
+
+    """
+    Migra la base antigua ubicada junto al programa
+    hacia:
+
+        Datos\bdescuela.db
+
+    Se contemplan dos situaciones:
+
+    1. La base antigua ya está cifrada con SQLCipher.
+       En ese caso se copia conservando su contenido.
+
+    2. La base antigua todavía es SQLite normal.
+       En ese caso se importa y se crea una nueva
+       base SQLCipher.
+
+    La base antigua nunca se elimina automáticamente.
+    """
+
+    ruta_nueva = obtener_ruta_bd()
+
+    ruta_antigua = obtener_ruta_bd_antigua()
+
+    # -------------------------------------------------
+    # Si no existe la base antigua, no hay nada
+    # que migrar.
+    # -------------------------------------------------
+
+    if not os.path.isfile(
+        ruta_antigua
+    ):
+
+        return False
+
+    # -------------------------------------------------
+    # Si la base nueva ya existe, no hacemos nada.
+    # -------------------------------------------------
+
+    if os.path.isfile(
+        ruta_nueva
+    ):
+
+        return False
+
+    print()
+    print(
+        "================================================="
+    )
+    print(
+        "MIGRACIÓN DE LA BASE DE DATOS"
+    )
+    print(
+        "================================================="
+    )
+
+    print()
+    print(
+        "Base antigua detectada:"
+    )
+
+    print(
+        ruta_antigua
+    )
+
+    print()
+    print(
+        "Nueva ubicación:"
+    )
+
+    print(
+        ruta_nueva
+    )
+
+    # -------------------------------------------------
+    # Obtener la clave de la instalación.
+    #
+    # Si la base antigua ya era SQLCipher, esta será
+    # la clave con la que fue creada.
+    #
+    # Si era SQLite normal, se crea una nueva clave
+    # porque ahora será necesario cifrarla.
+    # -------------------------------------------------
+
+    try:
+
+        clave = seguridad_bd.obtener_clave_bd()
+
+        print()
+        print(
+            "Clave de BD existente encontrada."
+        )
+
+    except FileNotFoundError:
+
+        print()
+        print(
+            "No existe una clave de BD protegida."
+        )
+
+        print(
+            "La base antigua será migrada a una "
+            "nueva base SQLCipher."
+        )
+
+        clave = seguridad_bd.crear_clave_bd()
+
+        print(
+            "Nueva clave de BD creada correctamente."
+        )
+
+    # =================================================
+    # INTENTO 1:
+    # LA BASE ANTIGUA YA ES SQLCIPHER
+    # =================================================
+
+    if verificar_bd_sqlcipher(
+        ruta_antigua,
+        clave
+    ):
+
+        print()
+        print(
+            "La base antigua ya está cifrada "
+            "mediante SQLCipher."
+        )
+
+        # -------------------------------------------------
+        # Copiamos el archivo directamente.
+        #
+        # Esto conserva el cifrado existente.
+        # -------------------------------------------------
+
+        shutil.copy2(
+            ruta_antigua,
+            ruta_nueva
+        )
+
+        print()
+        print(
+            "Base SQLCipher trasladada correctamente."
+        )
+
+        return True
+
+    # =================================================
+    # INTENTO 2:
+    # LA BASE ANTIGUA ES SQLITE NORMAL
+    # =================================================
+
+    if verificar_bd_sqlite_normal(
+        ruta_antigua
+    ):
+
+        print()
+        print(
+            "La base antigua es SQLite normal."
+        )
+
+        print(
+            "Se realizará una migración hacia SQLCipher."
+        )
+
+        migrar_sqlite_normal_a_sqlcipher(
+            ruta_antigua,
+            ruta_nueva,
+            clave
+        )
+
+        print()
+        print(
+            "Migración a SQLCipher completada."
+        )
+
+        return True
+
+    # =================================================
+    # BASE NO RECONOCIDA
+    # =================================================
+
+    raise RuntimeError(
+        "La base de datos antigua existe pero "
+        "no pudo ser reconocida como SQLite normal "
+        "ni como SQLCipher compatible con la clave "
+        "de esta instalación."
+    )
+
+
+# =====================================================
+# MIGRAR SQLITE NORMAL A SQLCIPHER
+# =====================================================
+
+def migrar_sqlite_normal_a_sqlcipher(
+    ruta_origen,
+    ruta_destino,
+    clave
+):
+
+    """
+    Convierte una base SQLite normal en una nueva
+    base SQLCipher.
+
+    La base original permanece intacta.
+    """
+
+    import sqlite3 as sqlite_normal
+
+    conexion_origen = None
+    conexion_destino = None
+
+    try:
+
+        # -------------------------------------------------
+        # Abrir base SQLite normal.
+        # -------------------------------------------------
+
+        conexion_origen = sqlite_normal.connect(
+            ruta_origen
+        )
+
+        # -------------------------------------------------
+        # Verificar que realmente pueda leerse.
+        # -------------------------------------------------
+
+        conexion_origen.execute(
+            "SELECT count(*) FROM sqlite_master"
+        ).fetchone()
+
+        # -------------------------------------------------
+        # Crear nueva base SQLCipher.
+        # -------------------------------------------------
+
+        conexion_destino = sqlite3.connect(
+            ruta_destino
+        )
+
+        configurar_clave_sqlcipher(
+            conexion_destino,
+            clave
+        )
+
+        # -------------------------------------------------
+        # Obtener la estructura completa de la base.
+        # -------------------------------------------------
+
+        objetos = conexion_origen.execute(
+            """
+            SELECT type, name, sql
+            FROM sqlite_master
+            WHERE sql IS NOT NULL
+            AND name NOT LIKE 'sqlite_%'
+            ORDER BY
+                CASE type
+                    WHEN 'table' THEN 1
+                    WHEN 'index' THEN 2
+                    WHEN 'trigger' THEN 3
+                    WHEN 'view' THEN 4
+                    ELSE 5
+                END,
+                name
+            """
+        ).fetchall()
+
+        # -------------------------------------------------
+        # Crear primero tablas.
+        # -------------------------------------------------
+
+        for tipo, nombre, sql in objetos:
+
+            if tipo == "table":
+
+                conexion_destino.execute(
+                    sql
+                )
+
+        # -------------------------------------------------
+        # Copiar los datos de las tablas.
+        # -------------------------------------------------
+
+        tablas = conexion_origen.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """
+        ).fetchall()
+
+        for fila in tablas:
+
+            nombre_tabla = fila[0]
+
+            columnas = conexion_origen.execute(
+                f"""
+                PRAGMA table_info(
+                    "{nombre_tabla}"
+                )
+                """
+            ).fetchall()
+
+            nombres_columnas = [
+                columna[1]
+                for columna in columnas
+            ]
+
+            if not nombres_columnas:
+                continue
+
+            columnas_sql = ", ".join(
+                f'"{columna}"'
+                for columna in nombres_columnas
+            )
+
+            marcadores = ", ".join(
+                "?"
+                for _ in nombres_columnas
+            )
+
+            registros = conexion_origen.execute(
+                f"""
+                SELECT {columnas_sql}
+                FROM "{nombre_tabla}"
+                """
+            ).fetchall()
+
+            if registros:
+
+                conexion_destino.executemany(
+                    f"""
+                    INSERT INTO "{nombre_tabla}"
+                    ({columnas_sql})
+                    VALUES ({marcadores})
+                    """,
+                    registros
+                )
+
+        # -------------------------------------------------
+        # Crear índices, triggers y vistas.
+        # -------------------------------------------------
+
+        for tipo, nombre, sql in objetos:
+
+            if tipo in (
+                "index",
+                "trigger",
+                "view"
+            ):
+
+                try:
+
+                    conexion_destino.execute(
+                        sql
+                    )
+
+                except Exception as error:
+
+                    print(
+                        f"Advertencia al crear "
+                        f"{tipo} '{nombre}': "
+                        f"{error}"
+                    )
+
+        # -------------------------------------------------
+        # Confirmar migración.
+        # -------------------------------------------------
+
+        conexion_destino.commit()
+
+        # -------------------------------------------------
+        # Verificación básica.
+        # -------------------------------------------------
+
+        resultado = conexion_destino.execute(
+            "PRAGMA integrity_check"
+        ).fetchone()
+
+        if not resultado:
+
+            raise RuntimeError(
+                "No se pudo verificar la integridad "
+                "de la base migrada."
+            )
+
+        if resultado[0] != "ok":
+
+            raise RuntimeError(
+                "La base migrada no superó "
+                "la comprobación de integridad."
+            )
+
+    except Exception:
+
+        # -------------------------------------------------
+        # Si la migración falla, eliminar solamente
+        # la nueva base incompleta.
+        #
+        # La base original permanece intacta.
+        # -------------------------------------------------
+
+        if conexion_destino is not None:
+
+            try:
+
+                conexion_destino.close()
+
+            except Exception:
+                pass
+
+            conexion_destino = None
+
+        if os.path.exists(
+            ruta_destino
+        ):
+
+            try:
+
+                os.remove(
+                    ruta_destino
+                )
+
+            except OSError:
+                pass
+
+        raise
+
+    finally:
+
+        if conexion_origen is not None:
+
+            conexion_origen.close()
+
+        if conexion_destino is not None:
+
+            conexion_destino.close()
 
 
 # =====================================================
@@ -15,26 +629,79 @@ import sys
 
 def conectar():
 
-    if getattr(sys, "frozen", False):
+    DATABASE = obtener_ruta_bd()
 
-        BASE_DIR = os.path.dirname(
-            sys.executable
+    # -------------------------------------------------
+    # Intentar primero migrar una base antigua.
+    #
+    # Esto se ejecuta únicamente si existe una base
+    # antigua y todavía no existe la nueva.
+    # -------------------------------------------------
+
+    if not os.path.exists(
+        DATABASE
+    ):
+
+        migrar_base_antigua()
+
+    # -------------------------------------------------
+    # Si después de la migración sigue sin existir,
+    # estamos ante una instalación completamente nueva.
+    # -------------------------------------------------
+
+    if not os.path.exists(
+        DATABASE
+    ):
+
+        print(
+            "--> Base de datos nueva."
         )
+
+        print(
+            "--> Generando clave segura de la BD..."
+        )
+
+        try:
+
+            clave = seguridad_bd.obtener_clave_bd()
+
+        except FileNotFoundError:
+
+            clave = seguridad_bd.crear_clave_bd()
 
     else:
 
-        BASE_DIR = os.path.dirname(
-            os.path.abspath(__file__)
-        )
+        # -------------------------------------------------
+        # La BD ya existe.
+        #
+        # Siempre recuperamos la clave protegida.
+        #
+        # NUNCA generamos una clave nueva para una BD
+        # existente.
+        # -------------------------------------------------
 
-    DATABASE = os.path.join(
-        BASE_DIR,
-        "bdescuela.db"
-    )
+        clave = seguridad_bd.obtener_clave_bd()
+
+    # =================================================
+    #        CONEXIÓN MEDIANTE SQLCIPHER
+    # =================================================
 
     conn = sqlite3.connect(
         DATABASE
     )
+
+    # -------------------------------------------------
+    # Configurar clave.
+    # -------------------------------------------------
+
+    configurar_clave_sqlcipher(
+        conn,
+        clave
+    )
+
+    # -------------------------------------------------
+    # Activar claves foráneas.
+    # -------------------------------------------------
 
     conn.execute(
         "PRAGMA foreign_keys = ON;"
@@ -47,7 +714,9 @@ def conectar():
 #              ENCRIPTAR CONTRASEÑA
 # =====================================================
 
-def hash_password(password):
+def hash_password(
+    password
+):
 
     return hashlib.sha256(
         password.encode()
@@ -94,7 +763,6 @@ def registrar_usuario(
 
     except sqlite3.IntegrityError:
 
-        # El usuario ya existe
         return False
 
     except Exception as e:
@@ -273,7 +941,6 @@ def crear_administrador(
 
         cursor = conn.cursor()
 
-        # Verificamos que no exista otro administrador
         cursor.execute(
             """
             SELECT COUNT(*)
@@ -432,13 +1099,8 @@ def crear_tablas():
         """
     )
 
-
     # =================================================
     #        MIGRACIÓN DE LA TABLA USUARIOS
-    # =================================================
-    #
-    # Esto sirve para instalaciones anteriores del SGE
-    # donde la tabla usuarios fue creada sin el campo rol.
     # =================================================
 
     cursor.execute(
@@ -464,21 +1126,8 @@ def crear_tablas():
             "a la tabla usuarios."
         )
 
-
     # =================================================
     #     ADMINISTRADOR INICIAL
-    # =================================================
-    #
-    # SOLO se crea cuando la tabla está completamente
-    # vacía.
-    #
-    # Datos iniciales:
-    #
-    # Usuario: admin
-    # Clave:   admin123
-    #
-    # Una vez creado, el administrador puede utilizar
-    # la pantalla de registro para crear usuarios.
     # =================================================
 
     cursor.execute(
@@ -517,17 +1166,8 @@ def crear_tablas():
             "inicial creado."
         )
 
-
     # =================================================
     #     COMPATIBILIDAD CON INSTALACIONES ANTERIORES
-    # =================================================
-    #
-    # Si ya existía el usuario 'admin' de una versión
-    # anterior del SGE y todavía no tenía rol ADMIN,
-    # lo recuperamos como administrador.
-    #
-    # Esto evita que una actualización deje al sistema
-    # sin ningún administrador.
     # =================================================
 
     cursor.execute(
@@ -574,7 +1214,6 @@ def crear_tablas():
                 "--> Usuario 'admin' existente "
                 "actualizado a rol ADMIN."
             )
-
 
     conn.commit()
 

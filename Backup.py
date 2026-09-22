@@ -1,13 +1,13 @@
-
 # ========================================================================================
 #                         MÓDULO PARA BACKUP DE BASE DE DATOS
 #                                  SISTEMA SGE
 # ========================================================================================
 #
 # Responsabilidad:
-#   - Crear una copia consistente de la base SQLite.
-#   - Obtener la clave de datos desde seguridad.py.
-#   - Cifrar el backup mediante Fernet.
+#   - Crear una copia consistente de la base SQLCipher.
+#   - Obtener la clave de la BD desde seguridad_bd.py.
+#   - Mantener la base de datos cifrada mediante SQLCipher.
+#   - Aplicar una segunda capa de cifrado Fernet al archivo de backup.
 #   - Guardar cada backup con fecha y hora.
 #   - Evitar sobrescribir backups existentes.
 #
@@ -15,93 +15,254 @@
 #   Este módulo NO:
 #   - genera claves.
 #   - administra Windows DPAPI.
-#   - administra la clave de datos.
+#   - crea claves de recuperación.
 #   - restaura bases de datos.
 #   - maneja ventanas Tkinter.
 #
-#   La administración de la clave pertenece a seguridad.py.
+#   La administración de la clave pertenece a seguridad_bd.py.
 #   La restauración pertenece a restauracion_nueva.py.
 #
 # ========================================================================================
 
+
+# ========================================================================================
+#                                  LIBRERÍAS
+# ========================================================================================
+
 import os
-import sys
-import sqlite3
 import base64
 from datetime import datetime
 
+from sqlcipher3 import dbapi2 as sqlite3
+
 from cryptography.fernet import Fernet
 
-from seguridad import obtener_clave_datos
+from seguridad_bd import (
+    obtener_clave_bd,
+    obtener_ruta_datos
+)
 
 
 # ========================================================================================
 #                                  RUTAS DEL SGE
 # ========================================================================================
 
-if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# ----------------------------------------------------------------------------------------
+# La base de datos se encuentra dentro de:
+#
+#   C:\ProgramData\SGE\Datos\bdescuela.db
+#
+# durante la versión instalada.
+#
+# En desarrollo, seguridad_bd.py utiliza:
+#
+#   Proyecto\Datos\bdescuela.db
+#
+# ----------------------------------------------------------------------------------------
 
+RUTA_DATOS = obtener_ruta_datos()
 
 RUTA_BASE_DATOS = os.path.join(
-    BASE_DIR,
+    RUTA_DATOS,
     "bdescuela.db"
 )
 
+
+# ----------------------------------------------------------------------------------------
+# La carpeta Backups se encuentra al mismo nivel que Datos:
+#
+#   C:\ProgramData\SGE\
+#       ├── Datos
+#       ├── Seguridad
+#       └── Backups
+#
+# ----------------------------------------------------------------------------------------
+
+RUTA_BASE_SGE = os.path.dirname(
+    RUTA_DATOS
+)
+
 CARPETA_BACKUPS = os.path.join(
-    BASE_DIR,
-    "backups"
+    RUTA_BASE_SGE,
+    "Backups"
 )
 
 
 # ========================================================================================
-#                            OBTENER CLAVE PARA FERNET
+#                       CONFIGURAR CLAVE DE SQLCIPHER
+# ========================================================================================
+
+def configurar_clave_sqlcipher(
+    conexion,
+    clave_bd
+):
+    """
+    Configura la clave de cifrado SQLCipher
+    para una conexión.
+
+    La clave original es de 32 bytes.
+
+    SQLCipher acepta la clave en formato hexadecimal
+    mediante:
+
+        PRAGMA key = "x'...'"
+
+    """
+
+    if not isinstance(
+        clave_bd,
+        bytes
+    ):
+        raise TypeError(
+            "La clave de la base de datos debe "
+            "ser de tipo bytes."
+        )
+
+    if len(clave_bd) != 32:
+        raise ValueError(
+            "La clave de la base de datos debe "
+            "tener exactamente 32 bytes."
+        )
+
+    clave_hex = clave_bd.hex()
+
+    conexion.execute(
+        f'PRAGMA key = "x\'{clave_hex}\'"'
+    )
+
+
+# ========================================================================================
+#                         OBTENER CLAVE PARA FERNET
 # ========================================================================================
 
 def obtener_clave_fernet():
+    """
+    Obtiene la clave de la base de datos y la
+    convierte al formato requerido por Fernet.
 
-    clave_datos = obtener_clave_datos()
+    IMPORTANTE:
 
-    if not isinstance(clave_datos, bytes):
+    La misma clave criptográfica de 32 bytes
+    utilizada para SQLCipher se utiliza aquí
+    únicamente para proteger el archivo de backup
+    con una segunda capa Fernet.
+
+    La clave nunca se guarda en texto plano.
+    """
+
+    clave_bd = obtener_clave_bd()
+
+    if not isinstance(
+        clave_bd,
+        bytes
+    ):
         raise TypeError(
-            "La clave de datos recuperada no es de tipo bytes."
+            "La clave de la base de datos recuperada "
+            "no es de tipo bytes."
         )
 
-    if len(clave_datos) != 32:
+    if len(clave_bd) != 32:
         raise ValueError(
-            "La clave de datos debe tener exactamente 32 bytes."
+            "La clave de la base de datos debe "
+            "tener exactamente 32 bytes."
         )
 
     clave_fernet = base64.urlsafe_b64encode(
-        clave_datos
+        clave_bd
     )
 
     return clave_fernet
 
 
 # ========================================================================================
-#                         CREAR COPIA CONSISTENTE DE SQLITE
+#                 CREAR COPIA CONSISTENTE DE LA BASE SQLCIPHER
 # ========================================================================================
 
-def crear_copia_sqlite(ruta_origen, ruta_temporal):
+def crear_copia_sqlcipher(
+    ruta_origen,
+    ruta_temporal,
+    clave_bd
+):
+    """
+    Crea una copia consistente de una base SQLCipher.
 
-    if not os.path.isfile(ruta_origen):
+    Tanto la base de origen como la copia temporal
+    se abren utilizando la clave de la base de datos.
+
+    La copia temporal continúa siendo una base
+    SQLCipher cifrada.
+
+    No se genera una copia SQLite en texto plano.
+    """
+
+    if not os.path.isfile(
+        ruta_origen
+    ):
         raise FileNotFoundError(
             "No existe la base de datos del SGE:\n\n"
             f"{ruta_origen}"
         )
 
-    conexion_origen = sqlite3.connect(
-        ruta_origen
-    )
+    # ------------------------------------------------------------------------------------
+    # La copia temporal no debe existir previamente.
+    # ------------------------------------------------------------------------------------
 
-    conexion_destino = sqlite3.connect(
+    if os.path.exists(
         ruta_temporal
-    )
+    ):
+        raise FileExistsError(
+            "La copia temporal ya existe:\n\n"
+            f"{ruta_temporal}"
+        )
+
+    conexion_origen = None
+    conexion_destino = None
 
     try:
+
+        # --------------------------------------------------------------------------------
+        # Abrir base de origen utilizando SQLCipher.
+        # --------------------------------------------------------------------------------
+
+        conexion_origen = sqlite3.connect(
+            ruta_origen
+        )
+
+        configurar_clave_sqlcipher(
+            conexion_origen,
+            clave_bd
+        )
+
+        # --------------------------------------------------------------------------------
+        # Verificar que la base de origen pueda abrirse correctamente.
+        # --------------------------------------------------------------------------------
+
+        conexion_origen.execute(
+            "SELECT count(*) FROM sqlite_master"
+        ).fetchone()
+
+        # --------------------------------------------------------------------------------
+        # Crear conexión destino.
+        # --------------------------------------------------------------------------------
+
+        conexion_destino = sqlite3.connect(
+            ruta_temporal
+        )
+
+        # --------------------------------------------------------------------------------
+        # Configurar la misma clave antes de realizar
+        # la operación de backup.
+        # --------------------------------------------------------------------------------
+
+        configurar_clave_sqlcipher(
+            conexion_destino,
+            clave_bd
+        )
+
+        # --------------------------------------------------------------------------------
+        # Realizar copia consistente mediante el mecanismo
+        # de backup de SQLite/SQLCipher.
+        # --------------------------------------------------------------------------------
 
         conexion_origen.backup(
             conexion_destino
@@ -111,8 +272,13 @@ def crear_copia_sqlite(ruta_origen, ruta_temporal):
 
     finally:
 
-        conexion_destino.close()
-        conexion_origen.close()
+        if conexion_destino is not None:
+
+            conexion_destino.close()
+
+        if conexion_origen is not None:
+
+            conexion_origen.close()
 
 
 # ========================================================================================
@@ -120,6 +286,16 @@ def crear_copia_sqlite(ruta_origen, ruta_temporal):
 # ========================================================================================
 
 def generar_nombre_backup():
+    """
+    Genera un nombre de backup basado en fecha y hora.
+
+    Ejemplo:
+
+        backup_sge_20260922_173015.enc
+
+    Si ya existe un archivo con ese nombre,
+    agrega un contador.
+    """
 
     fecha = datetime.now().strftime(
         "%Y%m%d_%H%M%S"
@@ -134,7 +310,9 @@ def generar_nombre_backup():
         nombre_base + ".enc"
     )
 
-    if not os.path.exists(ruta_backup):
+    if not os.path.exists(
+        ruta_backup
+    ):
         return ruta_backup
 
     contador = 1
@@ -150,7 +328,9 @@ def generar_nombre_backup():
             nombre_backup
         )
 
-        if not os.path.exists(ruta_backup):
+        if not os.path.exists(
+            ruta_backup
+        ):
             return ruta_backup
 
         contador += 1
@@ -161,28 +341,39 @@ def generar_nombre_backup():
 # ========================================================================================
 
 def cifrar_backup(
-    ruta_copia_sqlite,
+    ruta_copia_sqlcipher,
     ruta_backup
 ):
+    """
+    Aplica una segunda capa de cifrado Fernet
+    sobre la copia SQLCipher.
+
+    El archivo original ya está cifrado mediante
+    SQLCipher.
+
+    Fernet agrega una capa adicional para proteger
+    el archivo de backup almacenado externamente.
+    """
 
     if not os.path.isfile(
-        ruta_copia_sqlite
+        ruta_copia_sqlcipher
     ):
         raise FileNotFoundError(
-            "No existe la copia SQLite que se desea cifrar:\n\n"
-            f"{ruta_copia_sqlite}"
+            "No existe la copia SQLCipher que "
+            "se desea cifrar:\n\n"
+            f"{ruta_copia_sqlcipher}"
         )
 
     # ------------------------------------------------------------------------------------
-    # Protección adicional:
-    # nunca sobrescribir un backup existente.
+    # Nunca sobrescribir un backup existente.
     # ------------------------------------------------------------------------------------
 
     if os.path.exists(
         ruta_backup
     ):
         raise FileExistsError(
-            "El archivo de backup ya existe y no será sobrescrito:\n\n"
+            "El archivo de backup ya existe "
+            "y no será sobrescrito:\n\n"
             f"{ruta_backup}"
         )
 
@@ -193,7 +384,7 @@ def cifrar_backup(
     )
 
     with open(
-        ruta_copia_sqlite,
+        ruta_copia_sqlcipher,
         "rb"
     ) as archivo:
 
@@ -202,16 +393,22 @@ def cifrar_backup(
     if not datos:
 
         raise ValueError(
-            "La copia SQLite está vacía."
+            "La copia SQLCipher está vacía."
         )
 
     datos_cifrados = fernet.encrypt(
         datos
     )
 
-    ruta_temporal = ruta_backup + ".tmp"
+    ruta_temporal = (
+        ruta_backup + ".tmp"
+    )
 
     try:
+
+        # --------------------------------------------------------------------------------
+        # Crear archivo temporal de forma exclusiva.
+        # --------------------------------------------------------------------------------
 
         with open(
             ruta_temporal,
@@ -228,19 +425,23 @@ def cifrar_backup(
                 archivo.fileno()
             )
 
-        # -------------------------------------------------------------------------------
-        # Verificar nuevamente que el backup definitivo no apareció mientras se
-        # estaba creando el archivo temporal.
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Verificar nuevamente que el destino definitivo
+        # no haya aparecido durante la operación.
+        # --------------------------------------------------------------------------------
 
         if os.path.exists(
             ruta_backup
         ):
             raise FileExistsError(
-                "El archivo de backup apareció durante la creación "
-                "y no será sobrescrito:\n\n"
+                "El archivo de backup apareció durante "
+                "la creación y no será sobrescrito:\n\n"
                 f"{ruta_backup}"
             )
+
+        # --------------------------------------------------------------------------------
+        # Reemplazo atómico.
+        # --------------------------------------------------------------------------------
 
         os.replace(
             ruta_temporal,
@@ -269,32 +470,70 @@ def cifrar_backup(
 # ========================================================================================
 
 def crear_backup():
+    """
+    Crea un backup completo y cifrado de la base
+    de datos del SGE.
+
+    Proceso:
+
+        1. Recuperar clave BD.
+        2. Crear copia consistente mediante SQLCipher.
+        3. Mantener esa copia cifrada.
+        4. Aplicar Fernet.
+        5. Guardar archivo .enc.
+        6. Eliminar copia temporal.
+    """
 
     ruta_copia_temporal = None
 
     try:
 
-        # -------------------------------------------------------------------------------
-        # Crear carpeta de backups
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Crear carpeta de backups.
+        # --------------------------------------------------------------------------------
 
         os.makedirs(
             CARPETA_BACKUPS,
             exist_ok=True
         )
 
-        # -------------------------------------------------------------------------------
-        # Nombre temporal para la copia SQLite
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Obtener la clave de la BD.
+        #
+        # IMPORTANTE:
+        # obtener_clave_bd() NO genera una clave nueva.
+        # --------------------------------------------------------------------------------
+
+        clave_bd = obtener_clave_bd()
+
+        if not isinstance(
+            clave_bd,
+            bytes
+        ):
+            raise TypeError(
+                "La clave de la base de datos "
+                "no es válida."
+            )
+
+        if len(clave_bd) != 32:
+            raise ValueError(
+                "La clave de la base de datos "
+                "debe tener 32 bytes."
+            )
+
+        # --------------------------------------------------------------------------------
+        # Nombre temporal.
+        # --------------------------------------------------------------------------------
 
         ruta_copia_temporal = os.path.join(
             CARPETA_BACKUPS,
             "sge_backup_temporal.db"
         )
 
-        # -------------------------------------------------------------------------------
-        # Si quedó una copia temporal de una ejecución anterior, eliminarla
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Eliminar temporal anterior si hubiera quedado
+        # de una ejecución interrumpida.
+        # --------------------------------------------------------------------------------
 
         if os.path.exists(
             ruta_copia_temporal
@@ -304,33 +543,34 @@ def crear_backup():
                 ruta_copia_temporal
             )
 
-        # -------------------------------------------------------------------------------
-        # Crear copia consistente de SQLite
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Crear copia consistente SQLCipher.
+        # --------------------------------------------------------------------------------
 
-        crear_copia_sqlite(
+        crear_copia_sqlcipher(
             RUTA_BASE_DATOS,
-            ruta_copia_temporal
+            ruta_copia_temporal,
+            clave_bd
         )
 
-        # -------------------------------------------------------------------------------
-        # Generar nombre disponible
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Generar nombre definitivo.
+        # --------------------------------------------------------------------------------
 
         ruta_backup = generar_nombre_backup()
 
-        # -------------------------------------------------------------------------------
-        # Cifrar la copia
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Aplicar segunda capa de cifrado Fernet.
+        # --------------------------------------------------------------------------------
 
         cifrar_backup(
             ruta_copia_temporal,
             ruta_backup
         )
 
-        # -------------------------------------------------------------------------------
-        # Eliminar la copia SQLite temporal sin cifrar
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Eliminar copia temporal SQLCipher.
+        # --------------------------------------------------------------------------------
 
         if os.path.exists(
             ruta_copia_temporal
@@ -340,9 +580,11 @@ def crear_backup():
                 ruta_copia_temporal
             )
 
-        # -------------------------------------------------------------------------------
-        # Información del backup
-        # -------------------------------------------------------------------------------
+        ruta_copia_temporal = None
+
+        # --------------------------------------------------------------------------------
+        # Obtener tamaño final.
+        # --------------------------------------------------------------------------------
 
         tamaño_backup = os.path.getsize(
             ruta_backup
@@ -364,13 +606,15 @@ def crear_backup():
 
     except Exception as error:
 
-        # -------------------------------------------------------------------------------
-        # Limpieza de copia temporal si ocurrió algún error
-        # -------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------
+        # Limpieza de copia temporal ante cualquier error.
+        # --------------------------------------------------------------------------------
 
         if (
             ruta_copia_temporal
-            and os.path.exists(ruta_copia_temporal)
+            and os.path.exists(
+                ruta_copia_temporal
+            )
         ):
 
             try:
@@ -397,23 +641,27 @@ def crear_backup():
 if __name__ == "__main__":
 
     print("=" * 80)
-    print("PRUEBA DEL MÓDULO backup.py")
+    print("PRUEBA DEL MÓDULO Backup.py")
     print("=" * 80)
 
     try:
 
         print()
         print("Base de datos del SGE:")
-        print(RUTA_BASE_DATOS)
+        print(
+            RUTA_BASE_DATOS
+        )
 
         print()
         print("Carpeta de backups:")
-        print(CARPETA_BACKUPS)
+        print(
+            CARPETA_BACKUPS
+        )
 
         print()
-        print("Obteniendo clave de datos...")
+        print("Obteniendo clave de la base de datos...")
 
-        clave = obtener_clave_datos()
+        clave = obtener_clave_bd()
 
         print(
             "Clave obtenida correctamente."
