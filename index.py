@@ -162,17 +162,39 @@ def ventana_login(root, barramenu, lbl_usuario):
         # VALIDACIÓN EN BASE DE DATOS
         # -------------------------------------------------
 
-        if validar_usuario(
+        datos_usuario = validar_usuario(
             usuario,
             password
-        ):
+        )
+
+        if datos_usuario:
+
+            # -------------------------------------------------
+            # GUARDAR DATOS DE LA SESIÓN
+            # -------------------------------------------------
 
             usuario_logueado = usuario
 
-            sesion.usuario_actual = usuario
+            # La tabla usuarios devuelve:
+            #
+            # id_usuario
+            # username
+            # password
+            # rol
+            #
+            # Por eso:
+            # datos_usuario[1] = username
+            # datos_usuario[3] = rol
+
+            sesion.usuario_actual = datos_usuario[1]
+            sesion.rol_actual = datos_usuario[3]
+
+            # -------------------------------------------------
+            # ACTUALIZAR INDICADOR DE USUARIO
+            # -------------------------------------------------
 
             lbl_usuario.config(
-                text=f"Usuario: {usuario}"
+                text=f"Usuario: {sesion.usuario_actual}"
             )
 
             # -------------------------------------------------
@@ -186,6 +208,20 @@ def ventana_login(root, barramenu, lbl_usuario):
                 barramenu.entryconfig(
                     i,
                     state="normal"
+                )
+
+            # -------------------------------------------------
+            # CONTROL DE SEGURIDAD
+            #
+            # El menú Seguridad solamente queda habilitado
+            # para usuarios ADMIN.
+            # -------------------------------------------------
+
+            if not sesion.es_admin():
+
+                barramenu.entryconfig(
+                    "Seguridad",
+                    state="disabled"
                 )
 
             messagebox.showinfo(
@@ -276,6 +312,23 @@ def ventana_login(root, barramenu, lbl_usuario):
 
 def ejecutar_backup():
 
+    # -------------------------------------------------
+    # SEGURIDAD
+    #
+    # Aunque el menú esté oculto/deshabilitado para un
+    # usuario común, también protegemos la función.
+    # -------------------------------------------------
+
+    if not sesion.es_admin():
+
+        messagebox.showerror(
+            "Acceso restringido",
+            "Esta función solamente está disponible "
+            "para el administrador."
+        )
+
+        return
+
     try:
 
         ruta_backup = crear_backup()
@@ -300,6 +353,23 @@ def ejecutar_backup():
 # =========================================================================================================
 
 def abrir_seguridad():
+
+    # -------------------------------------------------
+    # SEGURIDAD
+    #
+    # La protección también se realiza dentro de la
+    # función, no solamente desde el menú.
+    # -------------------------------------------------
+
+    if not sesion.es_admin():
+
+        messagebox.showerror(
+            "Acceso restringido",
+            "Esta función solamente está disponible "
+            "para el administrador."
+        )
+
+        return
 
     ventana_seguridad(root)
 
@@ -594,7 +664,11 @@ centrar_ventana(
 #     ├── Seguridad y Copias del SGE
 #     └── Crear backup cifrado
 #
+# Estas funciones están disponibles exclusivamente
+# para usuarios con rol ADMIN.
+#
 # ---------------------------------------------------------------------------------------------------------------------
 
 
 root.mainloop()
+

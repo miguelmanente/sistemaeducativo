@@ -16,6 +16,7 @@
 #   - La creación de backups pertenece a Backup.py.
 #   - La restauración pertenece a restauracion_nueva.py.
 #   - La recuperación de emergencia utiliza recuperacion.py.
+#   - El acceso a esta ventana está reservado a ADMIN.
 #
 # ============================================================
 
@@ -43,6 +44,18 @@ from restauracion_nueva import (
 from recuperacion import (
     recuperar_clave_datos
 )
+
+# ------------------------------------------------------------
+# SESIÓN
+# ------------------------------------------------------------
+#
+# Se utiliza para verificar que el usuario actualmente
+# conectado tenga rol ADMIN.
+#
+# Esta comprobación es una segunda barrera de seguridad.
+# ------------------------------------------------------------
+
+import sesion
 
 
 # ============================================================
@@ -154,6 +167,35 @@ def centrar_ventana(ventana):
 # ============================================================
 
 def ventana_seguridad(root=None):
+
+    # ========================================================
+    # CONTROL DE ACCESO
+    # ========================================================
+    #
+    # Esta comprobación protege directamente la función.
+    #
+    # Aunque alguien intente ejecutar:
+    #
+    #     ventana_seguridad()
+    #
+    # desde otro módulo, la ventana solamente se abrirá
+    # cuando exista una sesión ADMIN.
+    # ========================================================
+
+    if not sesion.es_admin():
+
+        messagebox.showerror(
+            "Acceso restringido",
+            "Esta función solamente está disponible "
+            "para el administrador."
+        )
+
+        return None
+
+
+    # ========================================================
+    # CREAR VENTANA
+    # ========================================================
 
     if root is not None:
 
