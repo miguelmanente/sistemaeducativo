@@ -2,11 +2,16 @@
 #        MÓDULO LOGIN DE USUARIO Y REGISTRACIÓN
 # =====================================================
 
-# -----------------------------------------  LIBRERÍAS ---------------------------------------------------
+# ----------------------------------------- LIBRERÍAS ---------------------------------------------------
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+
+import os
+import sys
+
+from pathlib import Path
 
 from PIL import Image, ImageTk
 
@@ -33,7 +38,6 @@ from estilos import configurar_estilos
 
 from negocio.calendario_escolar import generar_calendario
 
-# NUEVO:
 # Ventana de Seguridad y Copias del SGE
 from seguridad_sge import ventana_seguridad
 
@@ -42,10 +46,50 @@ from seguridad_sge import ventana_seguridad
 
 usuario_logueado = None
 
+
+# =====================================================
+#             RUTA DE RECURSOS DEL SGE
+# =====================================================
+def obtener_carpeta_sge():
+
+    """
+    Devuelve la carpeta donde se encuentran
+    los recursos de SGE.
+
+    En desarrollo:
+        carpeta del archivo index.py
+
+    En versión compilada con PyInstaller:
+        carpeta interna de recursos (_internal)
+    """
+
+    if getattr(sys, "frozen", False):
+
+        return Path(
+            sys._MEIPASS
+        )
+
+    return Path(
+        __file__
+    ).resolve().parent
+
+
+def obtener_recurso(nombre_archivo):
+
+    """
+    Devuelve la ruta completa de un recurso
+    de SGE.
+    """
+
+    return (
+        obtener_carpeta_sge()
+        / nombre_archivo
+    )
+
+
 # ---------------------------------------------------------------------------------------------------------
-
-
-# ------------------------------------------- VENTANA PRINCIPAL -------------------------------------------
+#                                      VENTANA PRINCIPAL
+# ---------------------------------------------------------------------------------------------------------
 
 root = tk.Tk()
 
@@ -54,10 +98,10 @@ root.withdraw()
 
 root.title("SISTEMA ACADÉMICO")
 
+
 # ---------------------------------------------------------------------------------------------------------
-
-
-# --------------------------------------------- LOGIN -----------------------------------------------------
+#                                               LOGIN
+# ---------------------------------------------------------------------------------------------------------
 
 def ventana_login(root, barramenu, lbl_usuario):
 
@@ -400,10 +444,10 @@ lbl_usuario.pack(
     padx=10
 )
 
+
 # --------------------------------------------------------------------------------------------------------------------
-
-
-# ------------------------------------------------------ BARRA DE MENÚES ---------------------------------------------
+# ------------------------------------------------------ BARRA DE MENÚS ---------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 
 barramenu = tk.Menu(
     root
@@ -507,10 +551,10 @@ for i in range(
         state="disabled"
     )
 
+
 # --------------------------------------------------------------------------------------------------------------------
-
-
 # ---------------------------------- LOGO PRINCIPAL ------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
 
 logoP = tk.Frame(
     root
@@ -525,8 +569,12 @@ logoP.pack(
 
 try:
 
-    logo = Image.open(
+    ruta_logo_principal = obtener_recurso(
         "logo.png"
+    )
+
+    logo = Image.open(
+        ruta_logo_principal
     )
 
     logo = logo.resize(
@@ -576,22 +624,36 @@ label_text.pack(
     pady=(0, 10)
 )
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------ FOOTER -------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
+try:
 
-# ------------------------------------------------ FOOTER -------------------------------------------------------------
+    ruta_logo_footer = obtener_recurso(
+        "logo2.png"
+    )
 
-img = Image.open(
-    "logo2.png"
-)
+    img = Image.open(
+        ruta_logo_footer
+    )
 
-img = img.resize(
-    (120, 80)
-)
+    img = img.resize(
+        (120, 80)
+    )
 
-logo = ImageTk.PhotoImage(
-    img
-)
+    logo = ImageTk.PhotoImage(
+        img
+    )
+
+except Exception as e:
+
+    print(
+        f"No se pudo cargar el logo del pie: {e}"
+    )
+
+    logo = None
 
 
 frame_footer = tk.Frame(
@@ -606,14 +668,27 @@ frame_footer.pack(
 )
 
 
-lbl_logo = tk.Label(
-    frame_footer,
-    image=logo
-)
+if logo is not None:
 
-lbl_logo.pack(
-    anchor="w"
-)
+    lbl_logo = tk.Label(
+        frame_footer,
+        image=logo
+    )
+
+    lbl_logo.pack(
+        anchor="w"
+    )
+
+else:
+
+    lbl_logo = tk.Label(
+        frame_footer,
+        text="[Logo no disponible]"
+    )
+
+    lbl_logo.pack(
+        anchor="w"
+    )
 
 
 lbl_texto = tk.Label(
@@ -630,10 +705,10 @@ lbl_texto.pack(
 
 lbl_logo.image = logo
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-
-
 # ---------------- INICIAR LOGIN AUTOMÁTICO ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 ventana_login(
     root,
@@ -654,6 +729,7 @@ centrar_ventana(
 )
 
 
+# ---------------------------------------------------------------------------------------------------------------------
 # IMPORTANTE:
 #
 # Ya NO se crea un backup automáticamente al iniciar.
@@ -669,6 +745,4 @@ centrar_ventana(
 #
 # ---------------------------------------------------------------------------------------------------------------------
 
-
 root.mainloop()
-

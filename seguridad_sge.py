@@ -5,23 +5,27 @@
 # Ventana de Seguridad y Copias del SGE
 #
 # Responsabilidad:
-#   - Mostrar el estado de protección.
+#   - Mostrar el estado de protección de la base.
 #   - Mostrar el último backup cifrado.
 #   - Crear backups cifrados.
 #   - Restaurar un backup cifrado.
 #   - Realizar recuperación de emergencia.
 #
-# IMPORTANTE:
-#   - La administración de la clave pertenece a seguridad.py.
-#   - La creación de backups pertenece a Backup.py.
-#   - La restauración pertenece a restauracion_nueva.py.
-#   - La recuperación de emergencia utiliza recuperacion.py.
+# Arquitectura actual:
+#   - seguridad_bd.py administra la clave de la BD.
+#   - SQLCipher protege la base de datos.
+#   - Backup.py crea backups cifrados.
+#   - restauracion_nueva.py restaura backups.
+#   - recuperacion.py permite recuperar la clave.
 #   - El acceso a esta ventana está reservado a ADMIN.
+#
+# IMPORTANTE:
+#   Este módulo NO depende de seguridad.py.
 #
 # ============================================================
 
+
 import os
-import sys
 import tkinter as tk
 
 from tkinter import (
@@ -32,28 +36,46 @@ from tkinter import (
 
 from datetime import datetime
 
-from seguridad import verificar_clave_datos
+
+# ============================================================
+# SEGURIDAD DE LA BASE
+# ============================================================
+
+from seguridad_bd import (
+    obtener_clave_bd,
+    obtener_ruta_datos
+)
+
+
+# ============================================================
+# BACKUP
+# ============================================================
 
 from Backup import crear_backup
 
+
+# ============================================================
+# RESTAURACIÓN
+# ============================================================
+
 from restauracion_nueva import (
-    descifrar_backup,
-    verificar_base_sqlite
+    restaurar_backup,
+    verificar_base_sqlcipher
 )
+
+
+# ============================================================
+# RECUPERACIÓN
+# ============================================================
 
 from recuperacion import (
-    recuperar_clave_datos
+    recuperar_clave_bd
 )
 
-# ------------------------------------------------------------
+
+# ============================================================
 # SESIÓN
-# ------------------------------------------------------------
-#
-# Se utiliza para verificar que el usuario actualmente
-# conectado tenga rol ADMIN.
-#
-# Esta comprobación es una segunda barrera de seguridad.
-# ------------------------------------------------------------
+# ============================================================
 
 import sesion
 
@@ -62,29 +84,81 @@ import sesion
 # RUTAS
 # ============================================================
 
-if getattr(sys, "frozen", False):
-
-    BASE_DIR = os.path.dirname(
-        sys.executable
-    )
-
-else:
-
-    BASE_DIR = os.path.dirname(
-        os.path.abspath(__file__)
-    )
-
-
-CARPETA_BACKUPS = os.path.join(
-    BASE_DIR,
-    "backups"
-)
+RUTA_DATOS = obtener_ruta_datos()
 
 
 RUTA_BASE_DATOS = os.path.join(
-    BASE_DIR,
+    RUTA_DATOS,
     "bdescuela.db"
 )
+
+
+# La carpeta Backups está al mismo nivel que Datos.
+
+CARPETA_BACKUPS = os.path.join(
+    os.path.dirname(RUTA_DATOS),
+    "Backups"
+)
+
+
+# ============================================================
+# VERIFICAR PROTECCIÓN DE LA BASE
+# ============================================================
+#
+# La protección se considera correcta cuando:
+#
+#   1. Existe la base.
+#   2. Se puede recuperar la clave mediante seguridad_bd.py.
+#   3. SQLCipher acepta la clave.
+#   4. La base supera integrity_check.
+#   5. Contiene las tablas fundamentales del SGE.
+#
+# ============================================================
+
+def verificar_proteccion_bd():
+
+    if not os.path.isfile(
+        RUTA_BASE_DATOS
+    ):
+
+        return False
+
+
+    try:
+
+        clave_bd = obtener_clave_bd()
+
+
+        if not isinstance(
+            clave_bd,
+            bytes
+        ):
+
+            return False
+
+
+        if len(clave_bd) != 32:
+
+            return False
+
+
+        verificar_base_sqlcipher(
+            RUTA_BASE_DATOS,
+            clave_bd
+        )
+
+
+        return True
+
+
+    except Exception as error:
+
+        print(
+            "Error al verificar protección:",
+            error
+        )
+
+        return False
 
 
 # ============================================================
@@ -99,31 +173,43 @@ def obtener_ultimo_backup():
 
         return None
 
+
     archivos = []
+
 
     for archivo in os.listdir(
         CARPETA_BACKUPS
     ):
 
-        if archivo.lower().endswith(".enc"):
+        if archivo.lower().endswith(
+            ".enc"
+        ):
 
             ruta = os.path.join(
                 CARPETA_BACKUPS,
                 archivo
             )
 
-            if os.path.isfile(ruta):
 
-                archivos.append(ruta)
+            if os.path.isfile(
+                ruta
+            ):
+
+                archivos.append(
+                    ruta
+                )
+
 
     if not archivos:
 
         return None
 
+
     archivos.sort(
         key=os.path.getmtime,
         reverse=True
     )
+
 
     return archivos[0]
 
@@ -136,26 +222,32 @@ def centrar_ventana(ventana):
 
     ventana.update_idletasks()
 
+
     ancho = ventana.winfo_width()
     alto = ventana.winfo_height()
+
 
     pantalla_ancho = (
         ventana.winfo_screenwidth()
     )
 
+
     pantalla_alto = (
         ventana.winfo_screenheight()
     )
+
 
     x = (
         pantalla_ancho // 2
         - ancho // 2
     )
 
+
     y = (
         pantalla_alto // 2
         - alto // 2
     )
+
 
     ventana.geometry(
         f"{ancho}x{alto}+{x}+{y}"
@@ -170,16 +262,6 @@ def ventana_seguridad(root=None):
 
     # ========================================================
     # CONTROL DE ACCESO
-    # ========================================================
-    #
-    # Esta comprobación protege directamente la función.
-    #
-    # Aunque alguien intente ejecutar:
-    #
-    #     ventana_seguridad()
-    #
-    # desde otro módulo, la ventana solamente se abrirá
-    # cuando exista una sesión ADMIN.
     # ========================================================
 
     if not sesion.es_admin():
@@ -207,13 +289,16 @@ def ventana_seguridad(root=None):
 
         ventana = tk.Tk()
 
+
     ventana.title(
         "Seguridad y Copias del SGE"
     )
 
+
     ventana.geometry(
         "650x760"
     )
+
 
     ventana.resizable(
         False,
@@ -230,6 +315,7 @@ def ventana_seguridad(root=None):
         bg="#2c3e50",
         height=75
     )
+
 
     frame_titulo.pack(
         fill="x"
@@ -259,6 +345,7 @@ def ventana_seguridad(root=None):
         pady=15
     )
 
+
     frame_proteccion.pack(
         fill="x",
         padx=30,
@@ -271,6 +358,7 @@ def ventana_seguridad(root=None):
         text="Verificando...",
         font=("Arial", 13, "bold")
     )
+
 
     lbl_proteccion.pack()
 
@@ -287,6 +375,7 @@ def ventana_seguridad(root=None):
         pady=15
     )
 
+
     frame_backup.pack(
         fill="x",
         padx=30,
@@ -302,6 +391,7 @@ def ventana_seguridad(root=None):
         anchor="w"
     )
 
+
     lbl_backup.pack(
         fill="x"
     )
@@ -315,9 +405,8 @@ def ventana_seguridad(root=None):
 
         try:
 
-            protegido = (
-                verificar_clave_datos()
-            )
+            protegido = verificar_proteccion_bd()
+
 
             if protegido:
 
@@ -333,12 +422,14 @@ def ventana_seguridad(root=None):
                     fg="red"
                 )
 
+
         except Exception as error:
 
             lbl_proteccion.config(
                 text="⚠️ Error al verificar protección",
                 fg="red"
             )
+
 
             print(
                 "Error al verificar protección:",
@@ -357,6 +448,7 @@ def ventana_seguridad(root=None):
             ruta_backup = (
                 obtener_ultimo_backup()
             )
+
 
             if ruta_backup is None:
 
@@ -377,10 +469,8 @@ def ventana_seguridad(root=None):
             )
 
 
-            fecha_archivo = (
-                os.path.getmtime(
-                    ruta_backup
-                )
+            fecha_archivo = os.path.getmtime(
+                ruta_backup
             )
 
 
@@ -409,6 +499,7 @@ def ventana_seguridad(root=None):
                     "consultar el backup."
                 )
             )
+
 
             print(
                 "Error al consultar backup:",
@@ -485,22 +576,20 @@ def ventana_seguridad(root=None):
         # Seleccionar backup
         # ----------------------------------------------------
 
-        ruta_backup = (
-            filedialog.askopenfilename(
-                parent=ventana,
-                title="Seleccionar backup del SGE",
-                initialdir=CARPETA_BACKUPS,
-                filetypes=[
-                    (
-                        "Backups cifrados",
-                        "*.enc"
-                    ),
-                    (
-                        "Todos los archivos",
-                        "*.*"
-                    )
-                ]
-            )
+        ruta_backup = filedialog.askopenfilename(
+            parent=ventana,
+            title="Seleccionar backup del SGE",
+            initialdir=CARPETA_BACKUPS,
+            filetypes=[
+                (
+                    "Backups cifrados",
+                    "*.enc"
+                ),
+                (
+                    "Todos los archivos",
+                    "*.*"
+                )
+            ]
         )
 
 
@@ -535,65 +624,38 @@ def ventana_seguridad(root=None):
             return
 
 
-        ruta_temporal = (
-            RUTA_BASE_DATOS
-            + ".restauracion_tmp"
-        )
-
-
         try:
 
             # ------------------------------------------------
             # 1. Backup de seguridad
             # ------------------------------------------------
 
-            ruta_backup_seguridad = (
-                crear_backup()
-            )
+            ruta_backup_seguridad = crear_backup()
 
 
             # ------------------------------------------------
-            # 2. Eliminar temporal anterior
+            # 2. Restauración segura
+            #
+            # restaurar_backup() se encarga de:
+            #
+            #   - descifrar Fernet
+            #   - generar temporal SQLCipher
+            #   - verificar la base
+            #   - comprobar integrity_check
+            #   - comprobar estructura SGE
+            #   - respaldar la base actual
+            #   - reemplazarla
+            #   - verificar nuevamente
+            #
             # ------------------------------------------------
 
-            if os.path.exists(
-                ruta_temporal
-            ):
-
-                os.remove(
-                    ruta_temporal
-                )
-
-
-            # ------------------------------------------------
-            # 3. Descifrar
-            # ------------------------------------------------
-
-            descifrar_backup(
+            restaurar_backup(
                 ruta_backup,
-                ruta_temporal
-            )
-
-
-            # ------------------------------------------------
-            # 4. Verificar SQLite
-            # ------------------------------------------------
-
-            verificar_base_sqlite(
-                ruta_temporal
-            )
-
-
-            # ------------------------------------------------
-            # 5. Reemplazar base
-            # ------------------------------------------------
-
-            os.replace(
-                ruta_temporal,
                 RUTA_BASE_DATOS
             )
 
 
+            actualizar_proteccion()
             actualizar_backup()
 
 
@@ -601,8 +663,8 @@ def ventana_seguridad(root=None):
                 "Restauración completada",
                 "La base de datos del SGE "
                 "fue restaurada correctamente.\n\n"
-                "Se verificó la integridad de SQLite "
-                "antes de reemplazar la base actual.\n\n"
+                "La base recuperada superó todas "
+                "las comprobaciones de seguridad.\n\n"
                 "También se creó un backup de seguridad "
                 "antes de la restauración.\n\n"
                 f"Backup de seguridad:\n"
@@ -613,27 +675,13 @@ def ventana_seguridad(root=None):
 
         except Exception as error:
 
-            if os.path.exists(
-                ruta_temporal
-            ):
-
-                try:
-
-                    os.remove(
-                        ruta_temporal
-                    )
-
-                except OSError:
-
-                    pass
-
-
             messagebox.showerror(
                 "Error de restauración",
                 "No fue posible restaurar "
                 "el backup seleccionado.\n\n"
                 "La base de datos actual "
-                "no fue reemplazada.\n\n"
+                "no debería haber sido reemplazada "
+                "si la verificación falló.\n\n"
                 f"Detalle:\n{error}",
                 parent=ventana
             )
@@ -655,10 +703,8 @@ def ventana_seguridad(root=None):
             "en las que Windows no puede recuperar "
             "la clave de datos del SGE.\n\n"
             "Necesitará:\n\n"
-            "• El archivo de recuperación "
-            "recuperacion_sge.json\n"
-            "• La frase de recuperación\n"
-            "• Un backup cifrado (.enc)\n\n"
+            "• La contraseña de recuperación.\n"
+            "• Un backup cifrado (.enc).\n\n"
             "¿Desea continuar?",
             parent=ventana
         )
@@ -670,46 +716,14 @@ def ventana_seguridad(root=None):
 
 
         # ----------------------------------------------------
-        # Seleccionar archivo de recuperación
+        # Introducir contraseña
         # ----------------------------------------------------
 
-        ruta_recuperacion = (
-            filedialog.askopenfilename(
-                parent=ventana,
-                title=(
-                    "Seleccionar archivo "
-                    "de recuperación"
-                ),
-                filetypes=[
-                    (
-                        "Archivo de recuperación",
-                        "*.json"
-                    ),
-                    (
-                        "Todos los archivos",
-                        "*.*"
-                    )
-                ]
-            )
-        )
-
-
-        if not ruta_recuperacion:
-
-            return
-
-
-        # ----------------------------------------------------
-        # Introducir frase de recuperación
-        # ----------------------------------------------------
-
-        frase_recuperacion = (
-            simpledialog.askstring(
-                "Frase de recuperación",
-                "Ingrese la frase de recuperación:",
-                parent=ventana,
-                show="*"
-            )
+        frase_recuperacion = simpledialog.askstring(
+            "Recuperación de emergencia",
+            "Ingrese la contraseña de recuperación:",
+            parent=ventana,
+            show="*"
         )
 
 
@@ -721,8 +735,8 @@ def ventana_seguridad(root=None):
         if not frase_recuperacion.strip():
 
             messagebox.showwarning(
-                "Frase inválida",
-                "La frase de recuperación "
+                "Contraseña inválida",
+                "La contraseña de recuperación "
                 "no puede estar vacía.",
                 parent=ventana
             )
@@ -734,25 +748,20 @@ def ventana_seguridad(root=None):
         # Seleccionar backup
         # ----------------------------------------------------
 
-        ruta_backup = (
-            filedialog.askopenfilename(
-                parent=ventana,
-                title=(
-                    "Seleccionar backup cifrado "
-                    "para recuperar"
+        ruta_backup = filedialog.askopenfilename(
+            parent=ventana,
+            title="Seleccionar backup cifrado",
+            initialdir=CARPETA_BACKUPS,
+            filetypes=[
+                (
+                    "Backups cifrados",
+                    "*.enc"
                 ),
-                initialdir=CARPETA_BACKUPS,
-                filetypes=[
-                    (
-                        "Backups cifrados",
-                        "*.enc"
-                    ),
-                    (
-                        "Todos los archivos",
-                        "*.*"
-                    )
-                ]
-            )
+                (
+                    "Todos los archivos",
+                    "*.*"
+                )
+            ]
         )
 
 
@@ -773,13 +782,13 @@ def ventana_seguridad(root=None):
         respuesta = messagebox.askyesno(
             "Confirmar recuperación",
             "ATENCIÓN\n\n"
-            "Se utilizará el archivo de recuperación "
+            "Se utilizará el mecanismo de recuperación "
             "para obtener la clave de datos del SGE.\n\n"
             f"Backup seleccionado:\n"
             f"{nombre_backup}\n\n"
             "La base de datos actual será reemplazada "
             "solamente después de comprobar que el backup "
-            "puede descifrarse y que SQLite es válida.\n\n"
+            "puede descifrarse y que la base es válida.\n\n"
             "¿Desea continuar?",
             parent=ventana
         )
@@ -790,74 +799,35 @@ def ventana_seguridad(root=None):
             return
 
 
-        ruta_temporal = (
-            RUTA_BASE_DATOS
-            + ".emergencia_tmp"
-        )
-
-
         try:
 
             # ------------------------------------------------
-            # 1. Recuperar la clave mediante la frase
+            # 1. Recuperar la clave
+            #
+            # recuperar_clave_bd() utiliza el archivo
+            # recuperacion.dat definido por seguridad_bd.py
+            # y la contraseña proporcionada.
+            #
             # ------------------------------------------------
 
-            clave_datos = (
-                recuperar_clave_datos(
-                    frase_recuperacion,
-                    ruta_recuperacion
-                )
+            clave_datos = recuperar_clave_bd(
+                frase_recuperacion
             )
 
 
             # ------------------------------------------------
-            # 2. Eliminar temporal anterior
+            # 2. Restaurar utilizando la clave recuperada
             # ------------------------------------------------
 
-            if os.path.exists(
-                ruta_temporal
-            ):
-
-                os.remove(
-                    ruta_temporal
-                )
-
-
-            # ------------------------------------------------
-            # 3. Descifrar el backup
-            #
-            # Se utiliza la clave recuperada mediante
-            # el archivo externo y la frase.
-            # ------------------------------------------------
-
-            descifrar_backup(
+            restaurar_backup(
                 ruta_backup,
-                ruta_temporal,
+                RUTA_BASE_DATOS,
                 clave_datos
             )
 
 
             # ------------------------------------------------
-            # 4. Verificar SQLite
-            # ------------------------------------------------
-
-            verificar_base_sqlite(
-                ruta_temporal
-            )
-
-
-            # ------------------------------------------------
-            # 5. Reemplazar base actual
-            # ------------------------------------------------
-
-            os.replace(
-                ruta_temporal,
-                RUTA_BASE_DATOS
-            )
-
-
-            # ------------------------------------------------
-            # 6. Actualizar pantalla
+            # 3. Actualizar pantalla
             # ------------------------------------------------
 
             actualizar_proteccion()
@@ -869,9 +839,9 @@ def ventana_seguridad(root=None):
                 "La recuperación de emergencia "
                 "se completó correctamente.\n\n"
                 "La clave de datos fue recuperada "
-                "mediante el archivo externo.\n\n"
-                "El backup fue descifrado y la base SQLite "
-                "superó la comprobación de integridad.\n\n"
+                "mediante el mecanismo de recuperación.\n\n"
+                "El backup fue descifrado y la base "
+                "superó todas las comprobaciones.\n\n"
                 "La base de datos del SGE fue restaurada "
                 "correctamente.",
                 parent=ventana
@@ -880,34 +850,13 @@ def ventana_seguridad(root=None):
 
         except Exception as error:
 
-            # ------------------------------------------------
-            # Si algo falla, eliminar temporal.
-            #
-            # La base actual solamente se reemplaza después
-            # de superar la recuperación y la verificación.
-            # ------------------------------------------------
-
-            if os.path.exists(
-                ruta_temporal
-            ):
-
-                try:
-
-                    os.remove(
-                        ruta_temporal
-                    )
-
-                except OSError:
-
-                    pass
-
-
             messagebox.showerror(
                 "Error de recuperación",
                 "No fue posible completar "
                 "la recuperación de emergencia.\n\n"
                 "La base de datos actual "
-                "no fue reemplazada.\n\n"
+                "no debería haber sido reemplazada "
+                "si la recuperación o verificación falló.\n\n"
                 f"Detalle:\n{error}",
                 parent=ventana
             )
@@ -930,6 +879,7 @@ def ventana_seguridad(root=None):
     frame_botones = tk.Frame(
         ventana
     )
+
 
     frame_botones.pack(
         pady=15
@@ -1047,10 +997,19 @@ if __name__ == "__main__":
     print("PRUEBA DE seguridad_sge.py")
     print("=" * 60)
 
-    ventana_seguridad()
+    ventana = ventana_seguridad()
 
-    print(
-        "Ventana de seguridad creada correctamente."
-    )
 
-    tk.mainloop()
+    if ventana is not None:
+
+        print(
+            "Ventana de seguridad creada correctamente."
+        )
+
+        ventana.mainloop()
+
+    else:
+
+        print(
+            "La ventana no fue abierta."
+        )

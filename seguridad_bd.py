@@ -1,16 +1,13 @@
 # =====================================================
-#              SEGURIDAD DE LA BASE DE DATOS
+#             SEGURIDAD DE LA BASE DE DATOS
 #                         SGE
 # =====================================================
 
 import os
+import sys
 import secrets
 import ctypes
 import ctypes.wintypes
-
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 # =====================================================
@@ -18,24 +15,19 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 # =====================================================
 
 def obtener_ruta_datos():
-
     """
     Devuelve la carpeta donde estarán los datos
     del SGE.
 
-    Durante el desarrollo utilizamos una ubicación
+    Durante el desarrollo se utiliza una ubicación
     dentro del proyecto.
 
     En la versión instalada se utilizará:
 
-        C:\ProgramData\SGE\Datos
+        C:\\ProgramData\\SGE\\Datos
     """
 
-    if getattr(
-        __import__("sys"),
-        "frozen",
-        False
-    ):
+    if getattr(sys, "frozen", False):
 
         base = os.environ.get(
             "PROGRAMDATA",
@@ -61,17 +53,20 @@ def obtener_ruta_datos():
 
 
 def obtener_ruta_seguridad():
-
     """
     Devuelve la carpeta donde se almacenan
     los elementos de seguridad del SGE.
+
+    Durante el desarrollo:
+
+        Proyecto\\Seguridad
+
+    En la versión instalada:
+
+        C:\\ProgramData\\SGE\\Seguridad
     """
 
-    if getattr(
-        __import__("sys"),
-        "frozen",
-        False
-    ):
+    if getattr(sys, "frozen", False):
 
         base = os.environ.get(
             "PROGRAMDATA",
@@ -97,6 +92,11 @@ def obtener_ruta_seguridad():
 
 
 def obtener_ruta_clave():
+    """
+    Devuelve la ruta donde se almacena
+    la clave de la base de datos protegida
+    mediante Windows DPAPI.
+    """
 
     return os.path.join(
         obtener_ruta_seguridad(),
@@ -105,6 +105,13 @@ def obtener_ruta_clave():
 
 
 def obtener_ruta_recuperacion():
+    """
+    Devuelve la ruta donde se almacena
+    el archivo de recuperación.
+
+    La gestión criptográfica del archivo
+    corresponde al módulo recuperacion.py.
+    """
 
     return os.path.join(
         obtener_ruta_seguridad(),
@@ -137,9 +144,11 @@ class DATA_BLOB(ctypes.Structure):
 # =====================================================
 
 def _proteger_dpapi(dato):
-
     """
     Protege datos utilizando Windows DPAPI.
+
+    La protección queda vinculada al contexto
+    de Windows de esta instalación.
     """
 
     buffer = ctypes.create_string_buffer(
@@ -193,10 +202,7 @@ def _proteger_dpapi(dato):
 #                  RECUPERAR CON DPAPI
 # =====================================================
 
-def _recuperar_dpapi(
-    datos_protegidos
-):
-
+def _recuperar_dpapi(datos_protegidos):
     """
     Recupera datos protegidos mediante
     Windows DPAPI.
@@ -254,21 +260,22 @@ def _recuperar_dpapi(
 # =====================================================
 
 def generar_clave_bd():
-
     """
     Genera una clave criptográfica aleatoria
     de 256 bits.
+
+    Esta clave será utilizada posteriormente
+    por SQLCipher para cifrar la base de datos.
     """
 
     return secrets.token_bytes(32)
 
 
 # =====================================================
-#             CREAR Y GUARDAR CLAVE
+#              CREAR Y GUARDAR CLAVE
 # =====================================================
 
 def crear_clave_bd():
-
     """
     Genera una nueva clave para la BD y la
     almacena protegida mediante Windows DPAPI.
@@ -276,7 +283,9 @@ def crear_clave_bd():
     Devuelve la clave original en memoria.
 
     Esta función debe utilizarse solamente durante
-    la creación inicial de la instalación.
+    la creación inicial de una instalación.
+
+    Si ya existe una clave, no genera otra.
     """
 
     ruta_seguridad = (
@@ -322,7 +331,6 @@ def crear_clave_bd():
 # =====================================================
 
 def obtener_clave_bd():
-
     """
     Recupera la clave de la base de datos
     mediante Windows DPAPI.
@@ -332,6 +340,13 @@ def obtener_clave_bd():
     No crea automáticamente una clave nueva,
     porque eso podría provocar la pérdida de
     acceso a una BD existente.
+
+    La recuperación de emergencia NO se realiza
+    desde este módulo.
+
+    Para recuperación se utiliza:
+
+        recuperacion.py
     """
 
     ruta_clave = (
@@ -377,244 +392,5 @@ def obtener_clave_bd():
 
 
 # =====================================================
-#             DERIVAR CLAVE DE RECUPERACIÓN
-# =====================================================
-
-def derivar_clave_recuperacion(
-    contrasena,
-    salt
-):
-
-    """
-    Deriva una clave criptográfica a partir
-    de una contraseña de recuperación.
-
-    PBKDF2-SHA256 se utiliza para evitar que
-    la contraseña sea utilizada directamente
-    como clave AES.
-    """
-
-    if not contrasena:
-
-        raise ValueError(
-            "La contraseña de recuperación "
-            "no puede estar vacía."
-        )
-
-    if not salt:
-
-        raise ValueError(
-            "El salt no puede estar vacío."
-        )
-
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=600000
-    )
-
-    return kdf.derive(
-        contrasena.encode("utf-8")
-    )
-
-
-# =====================================================
-#           CREAR ARCHIVO DE RECUPERACIÓN
-# =====================================================
-
-def crear_recuperacion(
-    clave_bd,
-    contrasena
-):
-
-    """
-    Crea el archivo de recuperación de la
-    clave de la base de datos.
-
-    El archivo NO contiene la clave de la BD
-    en texto plano.
-
-    Contiene:
-
-        SALT
-        +
-        NONCE
-        +
-        CLAVE DE BD CIFRADA
-    """
-
-    if len(clave_bd) != 32:
-
-        raise ValueError(
-            "La clave de BD debe tener "
-            "256 bits."
-        )
-
-    if not contrasena:
-
-        raise ValueError(
-            "La contraseña de recuperación "
-            "no puede estar vacía."
-        )
-
-    ruta_seguridad = (
-        obtener_ruta_seguridad()
-    )
-
-    os.makedirs(
-        ruta_seguridad,
-        exist_ok=True
-    )
-
-    ruta_recuperacion = (
-        obtener_ruta_recuperacion()
-    )
-
-    if os.path.exists(
-        ruta_recuperacion
-    ):
-
-        raise FileExistsError(
-            "Ya existe un archivo "
-            "de recuperación."
-        )
-
-    salt = secrets.token_bytes(
-        16
-    )
-
-    clave_recuperacion = (
-        derivar_clave_recuperacion(
-            contrasena,
-            salt
-        )
-    )
-
-    nonce = secrets.token_bytes(
-        12
-    )
-
-    aes = AESGCM(
-        clave_recuperacion
-    )
-
-    clave_cifrada = aes.encrypt(
-        nonce,
-        clave_bd,
-        None
-    )
-
-    with open(
-        ruta_recuperacion,
-        "wb"
-    ) as archivo:
-
-        archivo.write(
-            salt
-        )
-
-        archivo.write(
-            nonce
-        )
-
-        archivo.write(
-            clave_cifrada
-        )
-
-
-# =====================================================
-#           RECUPERAR CLAVE DE LA BD
-# =====================================================
-
-def recuperar_clave_bd(
-    contrasena
-):
-
-    """
-    Recupera la clave de la BD utilizando
-    el archivo de recuperación y la contraseña
-    correspondiente.
-    """
-
-    ruta_recuperacion = (
-        obtener_ruta_recuperacion()
-    )
-
-    if not os.path.exists(
-        ruta_recuperacion
-    ):
-
-        raise FileNotFoundError(
-            "No existe el archivo "
-            "de recuperación."
-        )
-
-    with open(
-        ruta_recuperacion,
-        "rb"
-    ) as archivo:
-
-        contenido = archivo.read()
-
-    if len(contenido) < 29:
-
-        raise RuntimeError(
-            "El archivo de recuperación "
-            "está incompleto o dañado."
-        )
-
-    salt = contenido[
-        0:16
-    ]
-
-    nonce = contenido[
-        16:28
-    ]
-
-    clave_cifrada = contenido[
-        28:
-    ]
-
-    clave_recuperacion = (
-        derivar_clave_recuperacion(
-            contrasena,
-            salt
-        )
-    )
-
-    aes = AESGCM(
-        clave_recuperacion
-    )
-
-    try:
-
-        clave_bd = aes.decrypt(
-            nonce,
-            clave_cifrada,
-            None
-        )
-
-    except Exception as error:
-
-        raise ValueError(
-            "No fue posible recuperar "
-            "la clave de la BD. "
-            "La contraseña puede ser "
-            "incorrecta o el archivo "
-            "puede estar dañado."
-        ) from error
-
-    if len(clave_bd) != 32:
-
-        raise RuntimeError(
-            "La clave recuperada "
-            "no tiene un tamaño válido."
-        )
-
-    return clave_bd
-
-
-# =====================================================
-#                 FIN DEL MÓDULO
+#                     FIN DEL MÓDULO
 # =====================================================

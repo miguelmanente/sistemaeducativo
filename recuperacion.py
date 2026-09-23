@@ -1,85 +1,80 @@
 # ============================================================
-# recuperacion.py
-# Sistema de Gestión Educativa (SGE)
+#                 RECUPERACIÓN DE LA CLAVE DEL SGE
+# ============================================================
 #
-# Responsabilidad:
-#   - Crear el archivo de recuperación de la clave de datos.
-#   - Proteger la clave de datos mediante una frase de recuperación.
-#   - Recuperar la clave de datos utilizando dicha frase.
-#   - Permitir utilizar un archivo de recuperación externo.
+# Este módulo permite recuperar la clave de cifrado de la
+# base de datos cuando el mecanismo normal de Windows
+# (DPAPI) no puede utilizarse.
 #
 # IMPORTANTE:
-#   - La frase de recuperación NUNCA se guarda.
-#   - Este módulo NO administra Windows DPAPI.
-#   - Este módulo NO cifra backups.
-#   - Este módulo NO restaura bases de datos.
+#
+# - No genera una nueva clave de base de datos.
+# - No guarda la clave de BD en texto plano.
+# - No reemplaza la protección DPAPI.
+# - Utiliza un mecanismo independiente de recuperación.
+#
+# Flujo:
+#
+# contraseña
+#      ↓
+# PBKDF2-HMAC-SHA256
+#      ↓
+# clave de recuperación
+#      ↓
+# AES-GCM
+#      ↓
+# CLAVE_BD cifrada
 #
 # ============================================================
 
+
+# ------------------------ LIBRERÍAS --------------------------
+
 import os
-import sys
-import json
-import base64
+import getpass
 
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-
-from seguridad import obtener_clave_datos
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
-# ============================================================
-# UBICACIÓN BASE
-# ============================================================
+# ------------------------ RUTA DE RECUPERACIÓN ---------------
 
-if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from seguridad_bd import obtener_ruta_recuperacion
 
 
 # ============================================================
-# ARCHIVO DE RECUPERACIÓN PREDETERMINADO
+#                    CONFIGURACIÓN CRIPTOGRÁFICA
 # ============================================================
 
-CARPETA_SEGURIDAD = os.path.join(BASE_DIR, "seguridad")
+ITERACIONES = 600_000
 
-NOMBRE_ARCHIVO_RECUPERACION = "recuperacion_sge.json"
+TAMANIO_SALT = 16
 
-RUTA_RECUPERACION = os.path.join(
-    CARPETA_SEGURIDAD,
-    NOMBRE_ARCHIVO_RECUPERACION
-)
+TAMANIO_NONCE = 12
 
-
-# ============================================================
-# PARÁMETROS DE SCRYPT
-# ============================================================
-
-SCRYPT_N = 2**14
-SCRYPT_R = 8
-SCRYPT_P = 1
-
-LONGITUD_SALT = 16
+TAMANIO_CLAVE = 32
 
 
 # ============================================================
-# DERIVAR CLAVE DESDE LA FRASE DE RECUPERACIÓN
+#                 DERIVAR CLAVE DE RECUPERACIÓN
 # ============================================================
 
-def derivar_clave_recuperacion(frase_recuperacion, salt):
+def derivar_clave_recuperacion(contrasena, salt):
     """
-    Deriva una clave criptográfica a partir de la frase
-    de recuperación utilizando Scrypt.
+    Convierte la contraseña de recuperación en una clave
+    criptográfica de 32 bytes mediante PBKDF2-HMAC-SHA256.
     """
 
-    if not isinstance(frase_recuperacion, str):
+    if not isinstance(contrasena, str):
         raise TypeError(
-            "La frase de recuperación debe ser texto."
+            "La contraseña debe ser un texto."
         )
 
-    if not frase_recuperacion.strip():
+    if not contrasena:
         raise ValueError(
-            "La frase de recuperación no puede estar vacía."
+            "La contraseña de recuperación "
+            "no puede estar vacía."
         )
 
     if not isinstance(salt, bytes):
@@ -87,501 +82,468 @@ def derivar_clave_recuperacion(frase_recuperacion, salt):
             "El salt debe ser de tipo bytes."
         )
 
-    kdf = Scrypt(
+    if len(salt) != TAMANIO_SALT:
+        raise ValueError(
+            "El salt tiene un tamaño incorrecto."
+        )
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=TAMANIO_CLAVE,
         salt=salt,
-        length=32,
-        n=SCRYPT_N,
-        r=SCRYPT_R,
-        p=SCRYPT_P
+        iterations=ITERACIONES
     )
 
-    clave = kdf.derive(
-        frase_recuperacion.encode("utf-8")
+    return kdf.derive(
+        contrasena.encode("utf-8")
     )
-
-    return base64.urlsafe_b64encode(clave)
 
 
 # ============================================================
-# CREAR ARCHIVO DE RECUPERACIÓN
+#                  CREAR ARCHIVO DE RECUPERACIÓN
 # ============================================================
 
-def crear_archivo_recuperacion(
-    frase_recuperacion,
-    ruta_destino=None
-):
+def crear_recuperacion(clave_bd, contrasena):
     """
-    Crea un archivo de recuperación para la clave de datos.
+    Crea el archivo recuperacion.dat.
 
-    Si no se indica una ruta:
-        utiliza la ubicación predeterminada del SGE.
+    El archivo contiene:
 
-    Si se indica una ruta:
-        guarda allí el archivo de recuperación.
+        SALT
+        NONCE
+        CLAVE_BD CIFRADA
 
-    La frase de recuperación NO se guarda.
+    La clave de BD nunca se guarda directamente.
     """
 
-    if ruta_destino is None:
-        ruta_destino = RUTA_RECUPERACION
+    # --------------------------------------------------------
+    # VALIDAR CLAVE
+    # --------------------------------------------------------
 
-    if not isinstance(ruta_destino, str):
+    if not isinstance(clave_bd, bytes):
         raise TypeError(
-            "La ruta del archivo de recuperación debe ser texto."
+            "La clave de BD debe ser de tipo bytes."
         )
 
-    if not ruta_destino.strip():
+    if len(clave_bd) != TAMANIO_CLAVE:
         raise ValueError(
-            "La ruta del archivo de recuperación no puede estar vacía."
+            "La clave de BD debe tener 32 bytes."
         )
 
     # --------------------------------------------------------
-    # Obtener la clave de datos real del SGE
+    # VALIDAR CONTRASEÑA
     # --------------------------------------------------------
 
-    clave_datos = obtener_clave_datos()
-
-    if not isinstance(clave_datos, bytes):
+    if not isinstance(contrasena, str):
         raise TypeError(
-            "La clave de datos no es de tipo bytes."
+            "La contraseña debe ser de tipo texto."
         )
 
-    if len(clave_datos) != 32:
+    if len(contrasena) < 8:
         raise ValueError(
-            "La clave de datos debe tener exactamente 32 bytes."
+            "La contraseña de recuperación debe tener "
+            "al menos 8 caracteres."
         )
 
     # --------------------------------------------------------
-    # Crear salt aleatorio
+    # GENERAR SALT
     # --------------------------------------------------------
 
-    salt = os.urandom(LONGITUD_SALT)
+    salt = os.urandom(
+        TAMANIO_SALT
+    )
 
     # --------------------------------------------------------
-    # Derivar clave desde la frase
+    # DERIVAR CLAVE
     # --------------------------------------------------------
 
     clave_recuperacion = derivar_clave_recuperacion(
-        frase_recuperacion,
+        contrasena,
         salt
     )
 
     # --------------------------------------------------------
-    # Cifrar la clave de datos
+    # GENERAR NONCE
     # --------------------------------------------------------
 
-    fernet = Fernet(clave_recuperacion)
-
-    datos_cifrados = fernet.encrypt(clave_datos)
-
-    # --------------------------------------------------------
-    # Construir información del archivo
-    # --------------------------------------------------------
-
-    datos_recuperacion = {
-        "version": 1,
-        "algoritmo": "scrypt_fernet",
-        "salt": base64.b64encode(salt).decode("ascii"),
-        "scrypt": {
-            "n": SCRYPT_N,
-            "r": SCRYPT_R,
-            "p": SCRYPT_P
-        },
-        "clave_datos_cifrada": datos_cifrados.decode("ascii")
-    }
-
-    # --------------------------------------------------------
-    # Crear carpeta de destino si corresponde
-    # --------------------------------------------------------
-
-    carpeta_destino = os.path.dirname(
-        os.path.abspath(ruta_destino)
+    nonce = os.urandom(
+        TAMANIO_NONCE
     )
 
-    if carpeta_destino:
-        os.makedirs(
-            carpeta_destino,
-            exist_ok=True
-        )
-
     # --------------------------------------------------------
-    # Nunca sobrescribir automáticamente
+    # CIFRAR CLAVE DE BD
     # --------------------------------------------------------
 
-    if os.path.exists(ruta_destino):
+    aes = AESGCM(
+        clave_recuperacion
+    )
+
+    clave_bd_cifrada = aes.encrypt(
+        nonce,
+        clave_bd,
+        None
+    )
+
+    # --------------------------------------------------------
+    # CONSTRUIR ARCHIVO
+    # --------------------------------------------------------
+    #
+    # Estructura:
+    #
+    # [16 bytes SALT]
+    # [12 bytes NONCE]
+    # [32 bytes CLAVE_BD cifrada]
+    # [16 bytes TAG AES-GCM]
+    #
+    # AES-GCM agrega automáticamente el tag.
+    #
+
+    datos = (
+        salt
+        + nonce
+        + clave_bd_cifrada
+    )
+
+    # --------------------------------------------------------
+    # OBTENER RUTA
+    # --------------------------------------------------------
+
+    ruta = obtener_ruta_recuperacion()
+
+    carpeta = os.path.dirname(ruta)
+
+    os.makedirs(
+        carpeta,
+        exist_ok=True
+    )
+
+    # --------------------------------------------------------
+    # EVITAR SOBRESCRIBIR RECUPERACIÓN EXISTENTE
+    # --------------------------------------------------------
+
+    if os.path.exists(ruta):
+
         raise FileExistsError(
-            "Ya existe un archivo de recuperación del SGE:\n\n"
-            f"{ruta_destino}\n\n"
+            "Ya existe un archivo de recuperación. "
             "No se sobrescribirá automáticamente."
         )
 
     # --------------------------------------------------------
-    # Escritura atómica
+    # GUARDAR
     # --------------------------------------------------------
 
-    ruta_temporal = ruta_destino + ".tmp"
+    with open(
+        ruta,
+        "wb"
+    ) as archivo:
 
-    try:
-
-        with open(
-            ruta_temporal,
-            "w",
-            encoding="utf-8"
-        ) as archivo:
-
-            json.dump(
-                datos_recuperacion,
-                archivo,
-                indent=4
-            )
-
-            archivo.flush()
-            os.fsync(archivo.fileno())
-
-        os.replace(
-            ruta_temporal,
-            ruta_destino
+        archivo.write(
+            datos
         )
 
-    except Exception:
-
-        try:
-
-            if os.path.exists(ruta_temporal):
-                os.remove(ruta_temporal)
-
-        except OSError:
-            pass
-
-        raise
-
-    return ruta_destino
+    return ruta
 
 
 # ============================================================
-# RECUPERAR CLAVE DE DATOS
+#                  RECUPERAR CLAVE DE BD
 # ============================================================
 
-def recuperar_clave_datos(
-    frase_recuperacion,
-    ruta_archivo=None
-):
+def recuperar_clave_bd(contrasena):
     """
-    Recupera la clave de datos utilizando:
+    Recupera la clave de la base de datos utilizando
+    la contraseña de recuperación.
 
-        1. la frase de recuperación
-        2. el archivo de recuperación
+    Este proceso NO utiliza Windows DPAPI.
 
-    Si no se indica una ruta:
-        utiliza RUTA_RECUPERACION.
+    Devuelve:
 
-    Esto mantiene compatibilidad con el funcionamiento
-    anterior del módulo.
+        clave_bd
+
+    Si la contraseña es incorrecta o el archivo fue
+    alterado, AES-GCM producirá un error.
     """
 
-    if ruta_archivo is None:
-        ruta_archivo = RUTA_RECUPERACION
-
-    if not isinstance(ruta_archivo, str):
-        raise TypeError(
-            "La ruta del archivo de recuperación debe ser texto."
-        )
-
-    if not ruta_archivo.strip():
-        raise ValueError(
-            "La ruta del archivo de recuperación no puede estar vacía."
-        )
-
     # --------------------------------------------------------
-    # Verificar existencia
+    # OBTENER ARCHIVO
     # --------------------------------------------------------
 
-    if not os.path.isfile(ruta_archivo):
+    ruta = obtener_ruta_recuperacion()
+
+    if not os.path.exists(ruta):
+
         raise FileNotFoundError(
-            "No existe el archivo de recuperación del SGE:\n\n"
-            f"{ruta_archivo}"
+            "No existe el archivo de recuperación."
         )
 
     # --------------------------------------------------------
-    # Leer archivo
+    # LEER ARCHIVO
     # --------------------------------------------------------
 
-    try:
+    with open(
+        ruta,
+        "rb"
+    ) as archivo:
 
-        with open(
-            ruta_archivo,
-            "r",
-            encoding="utf-8"
-        ) as archivo:
+        datos = archivo.read()
 
-            datos_recuperacion = json.load(archivo)
+    # --------------------------------------------------------
+    # COMPROBAR TAMAÑO MÍNIMO
+    # --------------------------------------------------------
 
-    except json.JSONDecodeError as error:
+    minimo = (
+        TAMANIO_SALT
+        + TAMANIO_NONCE
+        + TAMANIO_CLAVE
+        + 16
+    )
+
+    if len(datos) < minimo:
 
         raise ValueError(
-            "El archivo de recuperación no contiene "
-            "un formato JSON válido."
-        ) from error
-
-    # --------------------------------------------------------
-    # Verificar versión
-    # --------------------------------------------------------
-
-    if datos_recuperacion.get("version") != 1:
-
-        raise ValueError(
-            "La versión del archivo de recuperación "
-            "no es compatible."
+            "El archivo de recuperación está incompleto "
+            "o tiene un formato inválido."
         )
 
     # --------------------------------------------------------
-    # Recuperar salt
+    # EXTRAER SALT
     # --------------------------------------------------------
+
+    posicion = 0
+
+    salt = datos[
+        posicion:
+        posicion + TAMANIO_SALT
+    ]
+
+    posicion += TAMANIO_SALT
+
+    # --------------------------------------------------------
+    # EXTRAER NONCE
+    # --------------------------------------------------------
+
+    nonce = datos[
+        posicion:
+        posicion + TAMANIO_NONCE
+    ]
+
+    posicion += TAMANIO_NONCE
+
+    # --------------------------------------------------------
+    # EXTRAER DATOS CIFRADOS
+    # --------------------------------------------------------
+
+    clave_bd_cifrada = datos[
+        posicion:
+    ]
+
+    # --------------------------------------------------------
+    # DERIVAR CLAVE DE RECUPERACIÓN
+    # --------------------------------------------------------
+
+    clave_recuperacion = derivar_clave_recuperacion(
+        contrasena,
+        salt
+    )
+
+    # --------------------------------------------------------
+    # DESCIFRAR
+    # --------------------------------------------------------
+
+    aes = AESGCM(
+        clave_recuperacion
+    )
 
     try:
 
-        salt = base64.b64decode(
-            datos_recuperacion["salt"]
+        clave_bd = aes.decrypt(
+            nonce,
+            clave_bd_cifrada,
+            None
         )
 
     except Exception as error:
 
         raise ValueError(
-            "El salt del archivo de recuperación "
-            "no es válido."
-        ) from error
-
-    if len(salt) != LONGITUD_SALT:
-
-        raise ValueError(
-            "El salt del archivo de recuperación "
-            "tiene un tamaño inválido."
-        )
-
-    # --------------------------------------------------------
-    # Recuperar parámetros de Scrypt
-    # --------------------------------------------------------
-
-    parametros = datos_recuperacion.get("scrypt")
-
-    if not isinstance(parametros, dict):
-
-        raise ValueError(
-            "Faltan los parámetros de Scrypt."
-        )
-
-    n = parametros.get("n")
-    r = parametros.get("r")
-    p = parametros.get("p")
-
-    if not all(
-        isinstance(valor, int)
-        for valor in (n, r, p)
-    ):
-
-        raise ValueError(
-            "Los parámetros de Scrypt no son válidos."
-        )
-
-    if n <= 1 or (n & (n - 1)) != 0:
-        raise ValueError(
-            "El parámetro N de Scrypt no es válido."
-        )
-
-    if r <= 0 or p <= 0:
-        raise ValueError(
-            "Los parámetros R y P de Scrypt no son válidos."
-        )
-
-    # --------------------------------------------------------
-    # Validar frase
-    # --------------------------------------------------------
-
-    if not isinstance(frase_recuperacion, str):
-
-        raise TypeError(
-            "La frase de recuperación debe ser texto."
-        )
-
-    if not frase_recuperacion.strip():
-
-        raise ValueError(
-            "La frase de recuperación no puede estar vacía."
-        )
-
-    # --------------------------------------------------------
-    # Derivar clave
-    # --------------------------------------------------------
-
-    kdf = Scrypt(
-        salt=salt,
-        length=32,
-        n=n,
-        r=r,
-        p=p
-    )
-
-    clave_derivada = kdf.derive(
-        frase_recuperacion.encode("utf-8")
-    )
-
-    clave_fernet = base64.urlsafe_b64encode(
-        clave_derivada
-    )
-
-    # --------------------------------------------------------
-    # Crear Fernet
-    # --------------------------------------------------------
-
-    fernet = Fernet(clave_fernet)
-
-    # --------------------------------------------------------
-    # Obtener clave de datos cifrada
-    # --------------------------------------------------------
-
-    token = datos_recuperacion.get(
-        "clave_datos_cifrada"
-    )
-
-    if not token:
-
-        raise ValueError(
-            "El archivo de recuperación no contiene "
-            "la clave de datos cifrada."
-        )
-
-    # --------------------------------------------------------
-    # Descifrar
-    # --------------------------------------------------------
-
-    try:
-
-        clave_datos = fernet.decrypt(
-            token.encode("ascii")
-        )
-
-    except Exception as error:
-
-        raise ValueError(
-            "No fue posible recuperar la clave de datos.\n\n"
-            "La frase de recuperación puede ser incorrecta "
-            "o el archivo de recuperación puede estar dañado."
+            "No fue posible recuperar la clave de la BD. "
+            "La contraseña puede ser incorrecta o el "
+            "archivo puede estar dañado."
         ) from error
 
     # --------------------------------------------------------
-    # Verificación final
+    # VALIDAR CLAVE RECUPERADA
     # --------------------------------------------------------
 
-    if len(clave_datos) != 32:
+    if len(clave_bd) != TAMANIO_CLAVE:
 
         raise ValueError(
-            "La clave recuperada no tiene exactamente "
-            "32 bytes."
+            "La clave recuperada tiene un tamaño inválido."
         )
 
-    return clave_datos
+    return clave_bd
 
 
 # ============================================================
-# VERIFICAR ARCHIVO DE RECUPERACIÓN
-# ============================================================
-
-def verificar_archivo_recuperacion(
-    frase_recuperacion,
-    ruta_archivo=None
-):
-    """
-    Verifica que el archivo de recuperación pueda utilizarse
-    para recuperar una clave de datos válida.
-    """
-
-    try:
-
-        clave = recuperar_clave_datos(
-            frase_recuperacion,
-            ruta_archivo
-        )
-
-        return (
-            isinstance(clave, bytes)
-            and len(clave) == 32
-        )
-
-    except Exception:
-
-        return False
-
-
-# ============================================================
-# PRUEBA DIRECTA DEL MÓDULO
+#                  PRUEBA DEL MÓDULO
 # ============================================================
 
 if __name__ == "__main__":
 
-    print("=" * 80)
-    print("PRUEBA DEL MÓDULO recuperacion.py")
-    print("=" * 80)
+    print("=" * 65)
+    print("PRUEBA DEL MÓDULO DE RECUPERACIÓN")
+    print("=" * 65)
 
     try:
 
-        print()
-        print("Archivo de recuperación predeterminado:")
-        print(RUTA_RECUPERACION)
+        # ----------------------------------------------------
+        # OBTENER CLAVE ACTUAL
+        # ----------------------------------------------------
+        #
+        # Esta llamada se utiliza únicamente para preparar
+        # el archivo de recuperación durante la prueba.
+        #
+        # El proceso recuperar_clave_bd() NO depende de ella.
+        #
 
         print()
-        print("Obteniendo clave de datos...")
-        clave_original = obtener_clave_datos()
+        print("Obteniendo clave de la BD para la prueba...")
 
-        print("Clave de datos obtenida correctamente.")
-        print("Bytes:", len(clave_original))
+        from seguridad_bd import obtener_clave_bd
+
+        clave_bd = obtener_clave_bd()
+
+        print(
+            "Clave obtenida correctamente."
+        )
+
+        print(
+            f"Bytes: {len(clave_bd)}"
+        )
+
+        print(
+            f"Bits: {len(clave_bd) * 8}"
+        )
+
+        # ----------------------------------------------------
+        # INGRESAR CONTRASEÑA
+        # ----------------------------------------------------
 
         print()
         print(
-            "Ingrese la frase de recuperación "
-            "para verificar el archivo existente."
+            "Ingrese una contraseña de recuperación."
         )
 
-        frase = input("Frase de recuperación: ")
+        print(
+            "Para esta prueba debe tener al menos "
+            "8 caracteres."
+        )
+
+        contrasena = getpass.getpass(
+            "Contraseña: "
+        )
+
+        confirmacion = getpass.getpass(
+            "Confirmar contraseña: "
+        )
+
+        if contrasena != confirmacion:
+
+            raise ValueError(
+                "Las contraseñas no coinciden."
+            )
+
+        # ----------------------------------------------------
+        # CREAR RECUPERACIÓN
+        # ----------------------------------------------------
 
         print()
-        print("Intentando recuperar la clave de datos...")
+        print(
+            "Creando archivo de recuperación..."
+        )
 
-        clave_recuperada = recuperar_clave_datos(
-            frase,
-            RUTA_RECUPERACION
+        ruta = crear_recuperacion(
+            clave_bd,
+            contrasena
         )
 
         print()
+        print(
+            "Archivo de recuperación creado:"
+        )
 
-        if clave_recuperada == clave_original:
+        print(
+            ruta
+        )
 
-            print("✅ RECUPERACIÓN EXITOSA.")
+        # ----------------------------------------------------
+        # RECUPERAR
+        # ----------------------------------------------------
+
+        print()
+        print(
+            "Probando recuperación..."
+        )
+
+        clave_recuperada = recuperar_clave_bd(
+            contrasena
+        )
+
+        print(
+            "Clave recuperada correctamente."
+        )
+
+        # ----------------------------------------------------
+        # COMPARAR CLAVES
+        # ----------------------------------------------------
+
+        if clave_bd == clave_recuperada:
+
             print()
             print(
-                "La clave recuperada es idéntica "
-                "a la clave original."
+                "✔ La clave original y la recuperada "
+                "coinciden."
             )
-            print()
-            print("Bytes:", len(clave_recuperada))
 
         else:
 
+            print()
             print(
-                "❌ ERROR: las claves no coinciden."
+                "✘ ERROR: las claves no coinciden."
             )
 
+            raise SystemExit
+
+        # ----------------------------------------------------
+        # RESULTADO
+        # ----------------------------------------------------
+
         print()
-        print("=" * 80)
-        print("PRUEBA FINALIZADA")
-        print("=" * 80)
+        print("=" * 65)
+        print(
+            "PRUEBA DEL MÓDULO EXITOSA"
+        )
+        print("=" * 65)
+
+        print()
+        print("Se comprobó:")
+        print("✔ clave BD obtenida")
+        print("✔ contraseña procesada mediante PBKDF2")
+        print("✔ clave BD protegida con AES-GCM")
+        print("✔ archivo de recuperación creado")
+        print("✔ archivo leído correctamente")
+        print("✔ clave BD recuperada")
+        print("✔ clave original = clave recuperada")
+        print()
+        print(
+            "LA RECUPERACIÓN FUNCIONA CORRECTAMENTE."
+        )
 
     except Exception as error:
 
         print()
-        print("❌ ERROR")
+        print("=" * 65)
+        print("ERROR EN LA PRUEBA")
+        print("=" * 65)
         print()
-        print(str(error))
-        print()
-        print("=" * 80)
-
+        print(error)
+        
 
