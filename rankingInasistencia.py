@@ -1,3 +1,4 @@
+
 # ==========================================================================================
 #             RANKING DE INASISTENCIAS DE DOCENTES - MÓDULO rankinginasistencias.py
 # ==========================================================================================
@@ -28,6 +29,9 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+
+# ---------------------------- Utilidades de SGE -------------------------------------------
+from utilidades import obtener_carpeta_reportes
 
 # ---------------------------- Fin Librerías ------------------------------------------------
 
@@ -648,7 +652,7 @@ class RankingInasistenciasApp:
         # ------------------------------------------------------------------
 
         carpeta_destino = os.path.join(
-            "reportes",
+            obtener_carpeta_reportes(),
             "pdf",
             "Faltas_Docentes"
         )
@@ -884,3 +888,4 @@ class RankingInasistenciasApp:
             )
 
     # ======================================================================================
+

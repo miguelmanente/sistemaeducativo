@@ -1,3 +1,4 @@
+
 import os
 import sqlite3
 import tkinter as tk
@@ -7,6 +8,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+from utilidades import obtener_carpeta_reportes
+
 
 # Ruta absoluta para evitar conflictos de ubicación de la BD
 DIRECTORIO_ACTUAL = os.path.dirname(os.path.abspath(__file__))
@@ -24,7 +28,7 @@ class VentanaReportesPDF:
         self.ventana.geometry("600x400")
         self.ventana.resizable(False, False)
 
-        # Hacer que esta ventana sea modal (opcional: impide interactuar con la principal hasta cerrar)
+        # Hacer que esta ventana sea modal
         self.ventana.transient(master_parent)
         self.ventana.grab_set()
 
@@ -33,12 +37,18 @@ class VentanaReportesPDF:
     def obtener_conexion(self):
         return sqlite3.connect(NOMBRE_BD)
 
-    def consultar_datos_doble(self, campo1, valor1, campo2=None, valor2=None):
+    def consultar_datos_doble(
+        self,
+        campo1,
+        valor1,
+        campo2=None,
+        valor2=None
+    ):
         conn = self.obtener_conexion()
         cursor = conn.cursor()
 
         query = """
-            SELECT 
+            SELECT
                 p.apellido || ' ' || p.nombre AS docente,
                 COALESCE(m.nombre, a.cargo) AS materia_o_cargo,
                 a.dia,
@@ -52,6 +62,7 @@ class VentanaReportesPDF:
             LEFT JOIN materias m ON a.id_materia = m.id_materia
             WHERE a.{} LIKE ?
         """
+
         params = [f"%{valor1}%"]
 
         if campo2 and valor2:
@@ -60,9 +71,14 @@ class VentanaReportesPDF:
 
         query += " ORDER BY a.dia ASC, a.hentrada ASC"
 
-        cursor.execute(query.format(campo1), params)
+        cursor.execute(
+            query.format(campo1),
+            params
+        )
+
         registros = cursor.fetchall()
         conn.close()
+
         return registros
 
     def generar_pdf_desde_interfaz(self):
@@ -87,6 +103,7 @@ class VentanaReportesPDF:
                 campo2 if campo2 != "Ninguno" else None,
                 valor2 if campo2 != "Ninguno" else None,
             )
+
         except sqlite3.Error as e:
             messagebox.showerror(
                 "Error de Base de Datos",
@@ -103,17 +120,34 @@ class VentanaReportesPDF:
             )
             return
 
-        # Ruta de guardado dinámica
+        # ------------------------------------------------------------------
+        # Ruta de guardado de reportes
+        # ------------------------------------------------------------------
         carpeta_destino = os.path.join(
-            DIRECTORIO_ACTUAL, "reportes", "pdf", "Listados_cursos"
+            obtener_carpeta_reportes(),
+            "pdf",
+            "Listados_cursos"
         )
-        os.makedirs(carpeta_destino, exist_ok=True)
+
+        os.makedirs(
+            carpeta_destino,
+            exist_ok=True
+        )
 
         valor1_limpio = valor1.replace("°", "").replace(" ", "_")
-        nombre_archivo = f"reporte_{campo1}_{valor1_limpio}.pdf"
-        ruta_pdf = os.path.join(carpeta_destino, nombre_archivo)
 
+        nombre_archivo = (
+            f"reporte_{campo1}_{valor1_limpio}.pdf"
+        )
+
+        ruta_pdf = os.path.join(
+            carpeta_destino,
+            nombre_archivo
+        )
+
+        # ------------------------------------------------------------------
         # Configuración ReportLab
+        # ------------------------------------------------------------------
         doc = SimpleDocTemplate(
             ruta_pdf,
             pagesize=landscape(A4),
@@ -127,15 +161,22 @@ class VentanaReportesPDF:
         styles = getSampleStyleSheet()
 
         subtitulo = f"{campo1.upper()}: {valor1}"
+
         if campo2 != "Ninguno" and valor2:
-            subtitulo += f" | {campo2.upper()}: {valor2}"
+            subtitulo += (
+                f" | {campo2.upper()}: {valor2}"
+            )
 
         story.append(
             Paragraph(
-                f"<b>Listado de Asignaciones — {subtitulo}</b>", styles["Title"]
+                f"<b>Listado de Asignaciones — {subtitulo}</b>",
+                styles["Title"]
             )
         )
-        story.append(Spacer(1, 15))
+
+        story.append(
+            Spacer(1, 15)
+        )
 
         headers = [
             "Docente",
@@ -147,35 +188,93 @@ class VentanaReportesPDF:
             "H. Salida",
             "Revista",
         ]
-        tabla_datos = [headers] + registros
+
+        tabla_datos = [
+            headers
+        ] + registros
 
         tabla = Table(
             tabla_datos,
-            colWidths=[150, 150, 70, 60, 60, 75, 75, 80],
+            colWidths=[
+                150,
+                150,
+                70,
+                60,
+                60,
+                75,
+                75,
+                80
+            ],
             repeatRows=1,
         )
+
         tabla.setStyle(
             TableStyle(
                 [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A365D")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("ALIGN", (0, 1), (1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+                    (
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
+                        colors.HexColor("#1A365D")
+                    ),
+                    (
+                        "TEXTCOLOR",
+                        (0, 0),
+                        (-1, 0),
+                        colors.whitesmoke
+                    ),
+                    (
+                        "ALIGN",
+                        (0, 0),
+                        (-1, -1),
+                        "CENTER"
+                    ),
+                    (
+                        "ALIGN",
+                        (0, 1),
+                        (1, -1),
+                        "LEFT"
+                    ),
+                    (
+                        "FONTNAME",
+                        (0, 0),
+                        (-1, 0),
+                        "Helvetica-Bold"
+                    ),
+                    (
+                        "FONTSIZE",
+                        (0, 0),
+                        (-1, -1),
+                        9
+                    ),
+                    (
+                        "BOTTOMPADDING",
+                        (0, 0),
+                        (-1, 0),
+                        8
+                    ),
+                    (
+                        "GRID",
+                        (0, 0),
+                        (-1, -1),
+                        0.5,
+                        colors.HexColor("#CBD5E0")
+                    ),
                     (
                         "ROWBACKGROUNDS",
                         (0, 1),
                         (-1, -1),
-                        [colors.white, colors.HexColor("#EDF2F7")],
+                        [
+                            colors.white,
+                            colors.HexColor("#EDF2F7")
+                        ],
                     ),
                 ]
             )
         )
 
         story.append(tabla)
+
         doc.build(story)
 
         messagebox.showinfo(
@@ -189,9 +288,17 @@ class VentanaReportesPDF:
 
     def crear_interfaz(self):
         frame = ttk.LabelFrame(
-            self.ventana, text=" Configuración de Filtros ", padding=15
+            self.ventana,
+            text=" Configuración de Filtros ",
+            padding=15
         )
-        frame.pack(fill="both", expand=True, padx=15, pady=15)
+
+        frame.pack(
+            fill="both",
+            expand=True,
+            padx=15,
+            pady=15
+        )
 
         campos_disponibles = [
             "curso",
@@ -203,50 +310,126 @@ class VentanaReportesPDF:
         ]
 
         # --- FILTRO 1 ---
-        ttk.Label(frame, text="Primer campo:").grid(
-            row=0, column=0, sticky="w", pady=5
+        ttk.Label(
+            frame,
+            text="Primer campo:"
+        ).grid(
+            row=0,
+            column=0,
+            sticky="w",
+            pady=5
         )
-        self.combo_campo1 = ttk.Combobox(
-            frame, values=campos_disponibles, state="readonly", width=18
-        )
-        self.combo_campo1.current(0)
-        self.combo_campo1.grid(row=0, column=1, pady=5, padx=5)
 
-        self.entry_valor1 = ttk.Entry(frame, width=15)
-        self.entry_valor1.insert(0, "1°1°")
-        self.entry_valor1.grid(row=0, column=2, pady=5, padx=5)
+        self.combo_campo1 = ttk.Combobox(
+            frame,
+            values=campos_disponibles,
+            state="readonly",
+            width=18
+        )
+
+        self.combo_campo1.current(0)
+
+        self.combo_campo1.grid(
+            row=0,
+            column=1,
+            pady=5,
+            padx=5
+        )
+
+        self.entry_valor1 = ttk.Entry(
+            frame,
+            width=15
+        )
+
+        self.entry_valor1.insert(
+            0,
+            "1°1°"
+        )
+
+        self.entry_valor1.grid(
+            row=0,
+            column=2,
+            pady=5,
+            padx=5
+        )
 
         # --- FILTRO 2 (OPCIONAL) ---
-        campos_filtro2 = ["Ninguno"] + campos_disponibles
+        campos_filtro2 = [
+            "Ninguno"
+        ] + campos_disponibles
 
-        ttk.Label(frame, text="Segundo campo:").grid(
-            row=1, column=0, sticky="w", pady=5
+        ttk.Label(
+            frame,
+            text="Segundo campo:"
+        ).grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=5
         )
+
         self.combo_campo2 = ttk.Combobox(
-            frame, values=campos_filtro2, state="readonly", width=18
+            frame,
+            values=campos_filtro2,
+            state="readonly",
+            width=18
         )
-        self.combo_campo2.current(3)  # 'dia' por posición
-        self.combo_campo2.grid(row=1, column=1, pady=5, padx=5)
 
-        self.entry_valor2 = ttk.Entry(frame, width=15)
-        self.entry_valor2.insert(0, "Lunes")
-        self.entry_valor2.grid(row=1, column=2, pady=5, padx=5)
+        self.combo_campo2.current(3)
+
+        self.combo_campo2.grid(
+            row=1,
+            column=1,
+            pady=5,
+            padx=5
+        )
+
+        self.entry_valor2 = ttk.Entry(
+            frame,
+            width=15
+        )
+
+        self.entry_valor2.insert(
+            0,
+            "Lunes"
+        )
+
+        self.entry_valor2.grid(
+            row=1,
+            column=2,
+            pady=5,
+            padx=5
+        )
 
         # --- BOTONES ---
         btn_generar = ttk.Button(
-            frame, text="📄 Generar PDF", command=self.generar_pdf_desde_interfaz
+            frame,
+            text="📄 Generar PDF",
+            command=self.generar_pdf_desde_interfaz
         )
-        btn_generar.grid(row=2, column=0, pady=20, padx=5)
+
+        btn_generar.grid(
+            row=2,
+            column=0,
+            pady=20,
+            padx=5
+        )
 
         btn_cerrar = ttk.Button(
-            frame, text="❌ Cerrar Listados", command=self.salir
+            frame,
+            text="❌ Cerrar Listados",
+            command=self.salir
         )
-        btn_cerrar.grid(row=2, column=2, pady=20, padx=5)
+
+        btn_cerrar.grid(
+            row=2,
+            column=2,
+            pady=20,
+            padx=5
+        )
 
 
 # ---------------------------------------------------------
 # BLOQUE PARA PRUEBA INDEPENDIENTE
 # ---------------------------------------------------------
 
-
-   

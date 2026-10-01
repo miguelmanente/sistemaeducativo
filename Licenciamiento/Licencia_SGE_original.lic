@@ -1,0 +1,15 @@
+{
+    "datos": {
+        "producto": "SGE",
+        "id_licencia": "SGE-2026-3E2782BB",
+        "id_solicitud": "faa43182-2c03-4569-9e52-14c56ac7edc7",
+        "institucion": "Escuela de Prueba",
+        "localidad": "Nelson",
+        "provincia": "Santa Fe",
+        "tipo": "prueba",
+        "version": "1.0",
+        "fecha_emision": "2026-09-30",
+        "fecha_vencimiento": "2026-10-30"
+    },
+    "firma": "VemliY0mpyggz6DO+ZktRyYjoGFjoavSvn4DKgjJKgan1/K1VEWpcp4fOA+RY/7ycXlKCC+sm3mbd4POM2M7Cg=="
+}

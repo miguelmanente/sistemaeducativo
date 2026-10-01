@@ -1,4 +1,5 @@
 
+
 """
 =========================================================
 Sistema de Gestión Educativa (SGE)
@@ -13,6 +14,64 @@ Autor: Miguel Ángel Manente
 """
 
 from datetime import datetime
+from pathlib import Path
+import os
+import sys
+
+
+# =========================================================
+# RUTAS DEL SISTEMA
+# =========================================================
+
+def obtener_carpeta_reportes():
+    """
+    Devuelve la carpeta principal donde SGE almacena los reportes.
+
+    Durante el desarrollo:
+        Sistema Académico\\reportes
+
+    Cuando SGE está compilado/instalado:
+        C:\\ProgramData\\SGE\\reportes
+
+    La carpeta se crea automáticamente si no existe.
+
+    Returns:
+        str: Ruta completa de la carpeta de reportes.
+    """
+
+    # -----------------------------------------------------
+    # EJECUCIÓN COMO PROGRAMA COMPILADO
+    # -----------------------------------------------------
+    if getattr(sys, "frozen", False):
+
+        program_data = os.environ.get("PROGRAMDATA")
+
+        if not program_data:
+            program_data = r"C:\ProgramData"
+
+        carpeta_reportes = (
+            Path(program_data)
+            / "SGE"
+            / "reportes"
+        )
+
+    # -----------------------------------------------------
+    # EJECUCIÓN DURANTE EL DESARROLLO
+    # -----------------------------------------------------
+    else:
+
+        carpeta_reportes = (
+            Path(__file__).resolve().parent
+            / "reportes"
+        )
+
+    # Crear la carpeta si no existe
+    carpeta_reportes.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    return str(carpeta_reportes)
 
 
 # =========================================================

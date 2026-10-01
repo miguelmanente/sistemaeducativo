@@ -1,3 +1,4 @@
+
 """
 =========================================================
 Sistema de Gestión Educativa (SGE)
@@ -38,6 +39,8 @@ from reportlab.platypus import (
     TableStyle,
     HRFlowable
 )
+
+from utilidades import obtener_carpeta_reportes
 
 
 # ==========================================================
@@ -97,15 +100,10 @@ def exportar_ficha_docente(
         nombre_completo = "Docente"
 
     # ======================================================
-    # DETERMINAR CARPETA DEL PROYECTO
+    # DETERMINAR CARPETA DE REPORTES
     # ======================================================
 
-    carpeta_modulo = os.path.dirname(os.path.abspath(__file__))
-
-    carpeta_reportes = os.path.join(
-        carpeta_modulo,
-        "reportes"
-    )
+    carpeta_reportes = obtener_carpeta_reportes()
 
     carpeta_pdf = os.path.join(
         carpeta_reportes,
@@ -485,3 +483,4 @@ def exportar_ficha_docente(
         )
 
         return False
+

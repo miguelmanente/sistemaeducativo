@@ -1,15 +1,15 @@
 {
     "datos": {
         "producto": "SGE",
-        "id_licencia": "SGE-2026-680C85D3",
+        "id_licencia": "SGE-2026-48F6250B",
         "id_solicitud": "faa43182-2c03-4569-9e52-14c56ac7edc7",
         "institucion": "Escuela de Prueba",
         "localidad": "Nelson",
         "provincia": "Santa Fe",
-        "tipo": "prueba",
+        "tipo": "permanente",
         "version": "1.0",
-        "fecha_emision": "2026-09-29",
-        "fecha_vencimiento": "2026-10-29"
+        "fecha_emision": "2026-09-30",
+        "fecha_vencimiento": null
     },
-    "firma": "aUYImOTagJzKendolWXmy9uKPFOwPL/ZypHy3PDnN9Ijwy3swjvRdLabFdqMUCzVeUTx9YszAP07cYiLqHMCDw=="
+    "firma": "gtWnsq/sWW2lZ6VFG18eKmuRFelog+zhx4XDNCwDByrCpOXeBV27EY418lRil0NVMyeEQBwEvZ4lXJMU9jnwDQ=="
 }

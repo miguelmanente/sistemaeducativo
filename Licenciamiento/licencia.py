@@ -1,11 +1,12 @@
 
-# ============================================================
-#                 MÓDULO DE LICENCIAMIENTO SGE
-# ============================================================
+# =====================================================
+#              MÓDULO DE LICENCIAMIENTO SGE
+# =====================================================
 
 import sys
 import json
 import base64
+
 from pathlib import Path
 from datetime import datetime
 
@@ -13,112 +14,189 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
-# ============================================================
-#                 CONFIGURACIÓN DEL SGE
-# ============================================================
+# =====================================================
+#              CONFIGURACIÓN DEL SGE
+# =====================================================
 
 VERSION_SGE = "1.0"
 
 
-# ============================================================
-#                 UBICACIÓN DE LA APLICACIÓN
-# ============================================================
+# =====================================================
+#          OBTENER CARPETA DEL SGE
+# =====================================================
 
-def obtener_carpeta_aplicacion():
+def obtener_carpeta_sge():
     """
-    Devuelve la carpeta donde se encuentra SGE.
+    Devuelve la carpeta principal del SGE.
 
-    Si está compilado con PyInstaller:
-        devuelve la carpeta donde está SGE.exe.
+    DESARROLLO:
 
-    Si se ejecuta desde Python:
-        devuelve la carpeta donde está licencia.py.
+        Sistema Académico\
+        ├── index.py
+        └── Licenciamiento\
+            └── licencia.py
+
+    COMPILADO:
+
+        dist\\SGE\\
+        ├── SGE.exe
+        └── ...
     """
+
+    # ---------------------------------------------
+    # SGE COMPILADO
+    # ---------------------------------------------
 
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent
 
-    return Path(__file__).resolve().parent
+        return Path(
+            sys.executable
+        ).resolve().parent
 
 
-# ============================================================
-#                 ARCHIVO DE LICENCIA
-# ============================================================
+    # ---------------------------------------------
+    # SGE EN DESARROLLO
+    # ---------------------------------------------
+
+    return Path(
+        __file__
+    ).resolve().parent.parent
+
+
+# =====================================================
+#       OBTENER CARPETA DE LICENCIAMIENTO
+# =====================================================
+
+def obtener_carpeta_licenciamiento():
+
+    # ---------------------------------------------
+    # DESARROLLO
+    # ---------------------------------------------
+
+    if not getattr(sys, "frozen", False):
+
+        return (
+            Path(__file__).resolve().parent
+        )
+
+
+    # ---------------------------------------------
+    # COMPILADO
+    # ---------------------------------------------
+
+    return (
+        Path(sys.executable).resolve().parent
+    )
+
+
+# =====================================================
+#              ARCHIVO DE LICENCIA
+# =====================================================
 
 def obtener_archivo_licencia():
-    """
-    Devuelve la ruta de la licencia predeterminada.
-    """
 
-    return obtener_carpeta_aplicacion() / "Licencia_SGE.lic"
+    carpeta = obtener_carpeta_licenciamiento()
+
+    return (
+        carpeta / "Licencia_SGE.lic"
+    )
 
 
-# ============================================================
-#                 ARCHIVO DE CLAVE PÚBLICA
-# ============================================================
+# =====================================================
+#              ARCHIVO DE CLAVE PÚBLICA
+# =====================================================
 
 def obtener_archivo_clave_publica():
-    """
-    Busca la clave pública.
 
-    Primero:
-        claves/clave_publica.pem
+    # ---------------------------------------------
+    # SGE EN DESARROLLO
+    # ---------------------------------------------
 
-    Si no existe:
-        clave_publica.pem
-    """
+    if not getattr(sys, "frozen", False):
 
-    carpeta = obtener_carpeta_aplicacion()
+        ruta = (
+            Path(__file__).resolve().parent
+            / "claves"
+            / "clave_publica.pem"
+        )
 
-    ruta_1 = carpeta / "claves" / "clave_publica.pem"
-
-    if ruta_1.exists():
-        return ruta_1
-
-    ruta_2 = carpeta / "clave_publica.pem"
-
-    return ruta_2
+        return (
+            ruta
+            if ruta.exists()
+            else None
+        )
 
 
-# ============================================================
-#                 CARGAR CLAVE PÚBLICA
-# ============================================================
+    # ---------------------------------------------
+    # SGE COMPILADO
+    # ---------------------------------------------
+
+    # PyInstaller coloca los archivos incluidos
+    # mediante "datas" dentro de _internal.
+    #
+    # Por lo tanto, la clave pública queda en:
+    #
+    # SGE\_internal\claves\clave_publica.pem
+
+    carpeta_interna = Path(
+        sys._MEIPASS
+    )
+
+    ruta = (
+        carpeta_interna
+        / "claves"
+        / "clave_publica.pem"
+    )
+
+    return (
+        ruta
+        if ruta.exists()
+        else None
+    )
+
+
+# =====================================================
+#              CARGAR CLAVE PÚBLICA
+# =====================================================
 
 def cargar_clave_publica():
-    """
-    Carga la clave pública Ed25519 utilizada
-    para verificar las licencias.
-    """
 
-    ruta_clave = obtener_archivo_clave_publica()
+    ruta = obtener_archivo_clave_publica()
 
-    if not ruta_clave.exists():
+    if ruta is None:
+
         raise FileNotFoundError(
-            f"No se encontró la clave pública:\n{ruta_clave}"
+            "No se encontró la clave pública de SGE."
         )
 
-    with open(ruta_clave, "rb") as archivo:
-        clave_publica = serialization.load_pem_public_key(
-            archivo.read()
+    with open(
+        ruta,
+        "rb"
+    ) as archivo:
+
+        clave_publica = (
+            serialization.load_pem_public_key(
+                archivo.read()
+            )
         )
 
-    if not isinstance(clave_publica, Ed25519PublicKey):
+    if not isinstance(
+        clave_publica,
+        Ed25519PublicKey
+    ):
+
         raise ValueError(
-            "La clave pública no es una clave Ed25519 válida."
+            "La clave pública no es Ed25519."
         )
 
     return clave_publica
 
 
-# ============================================================
-#                 DATOS CANÓNICOS
-# ============================================================
+# =====================================================
+#          GENERAR DATOS CANÓNICOS
+# =====================================================
 
 def generar_datos_canonicos(datos):
-    """
-    Convierte los datos de la licencia exactamente de la misma
-    manera utilizada al momento de firmarlos.
-    """
 
     return json.dumps(
         datos,
@@ -128,15 +206,35 @@ def generar_datos_canonicos(datos):
     ).encode("utf-8")
 
 
-# ============================================================
-#                 VALIDAR ESTRUCTURA
-# ============================================================
+# =====================================================
+#          VALIDAR ESTRUCTURA
+# =====================================================
 
-def validar_estructura(datos_licencia):
-    """
-    Comprueba que estén presentes todos los campos
-    necesarios de la licencia.
-    """
+def validar_estructura(licencia):
+
+    if not isinstance(
+        licencia,
+        dict
+    ):
+
+        return False
+
+    if "datos" not in licencia:
+
+        return False
+
+    if "firma" not in licencia:
+
+        return False
+
+    datos = licencia["datos"]
+
+    if not isinstance(
+        datos,
+        dict
+    ):
+
+        return False
 
     campos_obligatorios = [
         "producto",
@@ -152,32 +250,41 @@ def validar_estructura(datos_licencia):
     ]
 
     for campo in campos_obligatorios:
-        if campo not in datos_licencia:
+
+        if campo not in datos:
+
             return False
 
     return True
 
 
-# ============================================================
-#                 VERIFICAR FIRMA DIGITAL
-# ============================================================
+# =====================================================
+#              VERIFICAR FIRMA
+# =====================================================
 
-def verificar_firma(datos_licencia, firma_base64):
-    """
-    Comprueba que la firma digital corresponda exactamente
-    con los datos contenidos en la licencia.
-    """
+def verificar_firma(licencia):
 
     try:
 
-        clave_publica = cargar_clave_publica()
+        clave_publica = (
+            cargar_clave_publica()
+        )
 
-        datos_canonicos = generar_datos_canonicos(
-            datos_licencia
+        datos = licencia["datos"]
+
+        firma_base64 = (
+            licencia["firma"]
         )
 
         firma = base64.b64decode(
-            firma_base64
+            firma_base64,
+            validate=True
+        )
+
+        datos_canonicos = (
+            generar_datos_canonicos(
+                datos
+            )
         )
 
         clave_publica.verify(
@@ -188,365 +295,456 @@ def verificar_firma(datos_licencia, firma_base64):
         return True
 
     except Exception:
+
         return False
 
 
-# ============================================================
-#                 VERIFICAR VENCIMIENTO
-# ============================================================
+# =====================================================
+#            VERIFICAR VENCIMIENTO
+# =====================================================
 
-def verificar_vencimiento(fecha_vencimiento):
-    """
-    Comprueba si la licencia está vigente.
+def verificar_vencimiento(datos):
 
-    None significa licencia permanente.
+    fecha_vencimiento = (
+        datos.get(
+            "fecha_vencimiento"
+        )
+    )
 
-    Devuelve:
-
-        True  -> vigente
-        False -> vencida o inválida
-    """
+    # ---------------------------------------------
+    # Licencia permanente
+    # ---------------------------------------------
 
     if fecha_vencimiento is None:
+
         return True
+
+
+    # ---------------------------------------------
+    # Convertir fecha
+    # ---------------------------------------------
 
     try:
 
-        fecha_vencimiento = datetime.strptime(
+        fecha = datetime.strptime(
             fecha_vencimiento,
             "%Y-%m-%d"
         ).date()
 
-    except ValueError:
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return None
+
+
+    # ---------------------------------------------
+    # Comparar con fecha actual
+    # ---------------------------------------------
+
+    fecha_actual = (
+        datetime.now().date()
+    )
+
+    if fecha_actual > fecha:
+
         return False
 
-    fecha_actual = datetime.now().date()
-
-    return fecha_actual <= fecha_vencimiento
+    return True
 
 
-# ============================================================
-#                 VERIFICAR VERSIÓN
-# ============================================================
+# =====================================================
+#              VERIFICAR VERSIÓN
+# =====================================================
 
-def verificar_version(version_autorizada):
-    """
-    Comprueba que la licencia corresponda a la versión
-    actual de SGE.
-    """
+def verificar_version(datos):
 
-    return version_autorizada == VERSION_SGE
+    return (
+        datos.get("version")
+        == VERSION_SGE
+    )
 
 
-# ============================================================
-#             ANALIZAR LICENCIA COMPLETA
-# ============================================================
+# =====================================================
+#          ANALIZAR LICENCIA COMPLETA
+# =====================================================
 
-def analizar_licencia(ruta_licencia=None):
-    """
-    Analiza completamente una licencia y devuelve:
+def analizar_licencia(
+    ruta_licencia=None
+):
 
-        (True, "LICENCIA_VÁLIDA")
+    # ---------------------------------------------
+    # Determinar licencia
+    # ---------------------------------------------
 
-    o:
+    if ruta_licencia is None:
 
-        (False, "MOTIVO")
+        ruta = (
+            obtener_archivo_licencia()
+        )
 
-    Los motivos posibles son:
+    else:
 
-        LICENCIA_NO_ENCONTRADA
-        ARCHIVO_INVALIDO
-        ESTRUCTURA_INVALIDA
-        PRODUCTO_INVALIDO
-        FIRMA_INVALIDA
-        VERSION_NO_COMPATIBLE
-        LICENCIA_VENCIDA
-        FECHA_INVALIDA
-        ERROR_CLAVE_PUBLICA
-        ERROR_DESCONOCIDO
-    """
+        ruta = Path(
+            ruta_licencia
+        )
+
+
+    # ---------------------------------------------
+    # Verificar existencia
+    # ---------------------------------------------
+
+    if not ruta.exists():
+
+        return (
+            False,
+            "LICENCIA_NO_ENCONTRADA"
+        )
+
+
+    # ---------------------------------------------
+    # Leer archivo
+    # ---------------------------------------------
 
     try:
 
-        # ----------------------------------------------------
-        # Determinar archivo
-        # ----------------------------------------------------
+        with open(
+            ruta,
+            "r",
+            encoding="utf-8"
+        ) as archivo:
 
-        if ruta_licencia is None:
-            ruta_licencia = obtener_archivo_licencia()
-        else:
-            ruta_licencia = Path(ruta_licencia)
-
-        # ----------------------------------------------------
-        # Comprobar existencia
-        # ----------------------------------------------------
-
-        if not ruta_licencia.exists():
-            return False, "LICENCIA_NO_ENCONTRADA"
-
-        # ----------------------------------------------------
-        # Leer archivo
-        # ----------------------------------------------------
-
-        try:
-
-            with open(
-                ruta_licencia,
-                "r",
-                encoding="utf-8"
-            ) as archivo:
-
-                licencia = json.load(archivo)
-
-        except (json.JSONDecodeError, UnicodeDecodeError):
-
-            return False, "ARCHIVO_INVALIDO"
-
-        # ----------------------------------------------------
-        # Estructura principal
-        # ----------------------------------------------------
-
-        if "datos" not in licencia:
-            return False, "ESTRUCTURA_INVALIDA"
-
-        if "firma" not in licencia:
-            return False, "ESTRUCTURA_INVALIDA"
-
-        datos = licencia["datos"]
-        firma = licencia["firma"]
-
-        # ----------------------------------------------------
-        # Estructura de datos
-        # ----------------------------------------------------
-
-        if not isinstance(datos, dict):
-            return False, "ESTRUCTURA_INVALIDA"
-
-        if not validar_estructura(datos):
-            return False, "ESTRUCTURA_INVALIDA"
-
-        # ----------------------------------------------------
-        # Producto
-        # ----------------------------------------------------
-
-        if datos["producto"] != "SGE":
-            return False, "PRODUCTO_INVALIDO"
-
-        # ----------------------------------------------------
-        # Firma digital
-        # ----------------------------------------------------
-
-        try:
-
-            firma_valida = verificar_firma(
-                datos,
-                firma
+            licencia = json.load(
+                archivo
             )
 
-        except FileNotFoundError:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        UnicodeDecodeError
+    ):
 
-            return False, "ERROR_CLAVE_PUBLICA"
+        return (
+            False,
+            "ARCHIVO_INVALIDO"
+        )
 
-        except Exception:
 
-            return False, "ERROR_CLAVE_PUBLICA"
+    # ---------------------------------------------
+    # Validar estructura
+    # ---------------------------------------------
 
-        if not firma_valida:
-            return False, "FIRMA_INVALIDA"
+    if not validar_estructura(
+        licencia
+    ):
 
-        # ----------------------------------------------------
-        # Versión
-        # ----------------------------------------------------
+        return (
+            False,
+            "ESTRUCTURA_INVALIDA"
+        )
 
-        if not verificar_version(
-            datos["version"]
-        ):
-            return False, "VERSION_NO_COMPATIBLE"
 
-        # ----------------------------------------------------
-        # Fecha de vencimiento
-        # ----------------------------------------------------
+    datos = licencia["datos"]
 
-        fecha_vencimiento = datos["fecha_vencimiento"]
 
-        if fecha_vencimiento is not None:
+    # ---------------------------------------------
+    # Verificar producto
+    # ---------------------------------------------
 
-            try:
+    if datos.get(
+        "producto"
+    ) != "SGE":
 
-                fecha = datetime.strptime(
-                    fecha_vencimiento,
-                    "%Y-%m-%d"
-                ).date()
+        return (
+            False,
+            "PRODUCTO_INVALIDO"
+        )
 
-            except ValueError:
 
-                return False, "FECHA_INVALIDA"
+    # ---------------------------------------------
+    # Verificar clave pública
+    # ---------------------------------------------
 
-            fecha_actual = datetime.now().date()
+    try:
 
-            if fecha_actual > fecha:
-
-                return False, "LICENCIA_VENCIDA"
-
-        # ----------------------------------------------------
-        # Todo correcto
-        # ----------------------------------------------------
-
-        return True, "LICENCIA_VALIDA"
+        clave_publica = (
+            cargar_clave_publica()
+        )
 
     except Exception:
 
-        return False, "ERROR_DESCONOCIDO"
+        return (
+            False,
+            "ERROR_CLAVE_PUBLICA"
+        )
 
 
-# ============================================================
-#                 VERIFICAR LICENCIA
-# ============================================================
+    # ---------------------------------------------
+    # Verificar firma
+    # ---------------------------------------------
 
-def verificar_licencia(ruta_licencia=None):
-    """
-    Función compatible con la versión anterior.
+    try:
 
-    Devuelve:
+        firma_base64 = (
+            licencia["firma"]
+        )
 
-        True  -> licencia válida
-        False -> licencia inválida
-    """
+        firma = base64.b64decode(
+            firma_base64,
+            validate=True
+        )
 
-    valida, motivo = analizar_licencia(
-        ruta_licencia
+        datos_canonicos = (
+            generar_datos_canonicos(
+                datos
+            )
+        )
+
+        clave_publica.verify(
+            firma,
+            datos_canonicos
+        )
+
+    except Exception:
+
+        return (
+            False,
+            "FIRMA_INVALIDA"
+        )
+
+
+    # ---------------------------------------------
+    # Verificar versión
+    # ---------------------------------------------
+
+    if not verificar_version(
+        datos
+    ):
+
+        return (
+            False,
+            "VERSION_NO_COMPATIBLE"
+        )
+
+
+    # ---------------------------------------------
+    # Verificar vencimiento
+    # ---------------------------------------------
+
+    resultado_vencimiento = (
+        verificar_vencimiento(
+            datos
+        )
+    )
+
+    if resultado_vencimiento is None:
+
+        return (
+            False,
+            "FECHA_INVALIDA"
+        )
+
+    if resultado_vencimiento is False:
+
+        return (
+            False,
+            "LICENCIA_VENCIDA"
+        )
+
+
+    # ---------------------------------------------
+    # Todo correcto
+    # ---------------------------------------------
+
+    return (
+        True,
+        "LICENCIA_VALIDA"
+    )
+
+
+# =====================================================
+#              VERIFICAR LICENCIA
+# =====================================================
+
+def verificar_licencia(
+    ruta_licencia=None
+):
+
+    valida, motivo = (
+        analizar_licencia(
+            ruta_licencia
+        )
     )
 
     return valida
 
 
-# ============================================================
-#                 OBTENER DATOS DE LICENCIA
-# ============================================================
+# =====================================================
+#          OBTENER DATOS DE LICENCIA
+# =====================================================
 
-def obtener_datos_licencia(ruta_licencia=None):
-    """
-    Devuelve los datos de una licencia válida.
+def obtener_datos_licencia(
+    ruta_licencia=None
+):
 
-    Si la licencia no es válida:
-        devuelve None.
-    """
-
-    valida, motivo = analizar_licencia(
-        ruta_licencia
+    valida, motivo = (
+        analizar_licencia(
+            ruta_licencia
+        )
     )
 
     if not valida:
+
         return None
+
+
+    if ruta_licencia is None:
+
+        ruta = (
+            obtener_archivo_licencia()
+        )
+
+    else:
+
+        ruta = Path(
+            ruta_licencia
+        )
+
 
     try:
 
-        if ruta_licencia is None:
-            ruta_licencia = obtener_archivo_licencia()
-        else:
-            ruta_licencia = Path(ruta_licencia)
-
         with open(
-            ruta_licencia,
+            ruta,
             "r",
             encoding="utf-8"
         ) as archivo:
 
-            licencia = json.load(archivo)
+            licencia = json.load(
+                archivo
+            )
 
-        return licencia["datos"]
+        return licencia.get(
+            "datos"
+        )
 
     except Exception:
 
         return None
 
 
-# ============================================================
-#                 PRUEBA DIRECTA DEL MÓDULO
-# ============================================================
+# =====================================================
+#                    PRUEBA DIRECTA
+# =====================================================
 
 if __name__ == "__main__":
 
-    print("=" * 60)
-    print("           VERIFICACIÓN DE LICENCIA SGE")
-    print("=" * 60)
-    print()
-
-    # --------------------------------------------------------
-    # Archivo indicado desde PowerShell
-    # --------------------------------------------------------
-
     if len(sys.argv) > 1:
 
-        ruta = Path(sys.argv[1]).resolve()
+        ruta_prueba = Path(
+            sys.argv[1]
+        )
 
     else:
 
-        ruta = obtener_archivo_licencia()
+        ruta_prueba = (
+            obtener_archivo_licencia()
+        )
 
-    print("Archivo de licencia:")
-    print(ruta)
+
+    valida, motivo = (
+        analizar_licencia(
+            ruta_prueba
+        )
+    )
+
+
+    print()
+    print(
+        "=============================================="
+    )
+    print(
+        "          VERIFICACIÓN DE LICENCIA SGE"
+    )
+    print(
+        "=============================================="
+    )
     print()
 
-    # --------------------------------------------------------
-    # Analizar licencia
-    # --------------------------------------------------------
+    print(
+        f"Archivo de licencia:\n"
+        f"{ruta_prueba}"
+    )
 
-    valida, motivo = analizar_licencia(ruta)
+    print()
+
 
     if valida:
 
-        datos = obtener_datos_licencia(ruta)
+        datos = (
+            obtener_datos_licencia(
+                ruta_prueba
+            )
+        )
 
-        print("LICENCIA VÁLIDA ✅")
+        print(
+            "LICENCIA VÁLIDA ✅"
+        )
+
         print()
 
-        print(
-            f"ID licencia       : "
-            f"{datos['id_licencia']}"
-        )
+        if datos:
 
-        print(
-            f"Institución       : "
-            f"{datos['institucion']}"
-        )
+            print(
+                f"ID licencia       : "
+                f"{datos.get('id_licencia')}"
+            )
 
-        print(
-            f"Localidad         : "
-            f"{datos['localidad']}"
-        )
+            print(
+                f"Institución       : "
+                f"{datos.get('institucion')}"
+            )
 
-        print(
-            f"Provincia         : "
-            f"{datos['provincia']}"
-        )
+            print(
+                f"Localidad         : "
+                f"{datos.get('localidad')}"
+            )
 
-        print(
-            f"Tipo              : "
-            f"{datos['tipo']}"
-        )
+            print(
+                f"Provincia         : "
+                f"{datos.get('provincia')}"
+            )
 
-        print(
-            f"Versión           : "
-            f"{datos['version']}"
-        )
+            print(
+                f"Tipo              : "
+                f"{datos.get('tipo')}"
+            )
 
-        print(
-            f"Fecha de emisión  : "
-            f"{datos['fecha_emision']}"
-        )
+            print(
+                f"Versión           : "
+                f"{datos.get('version')}"
+            )
 
-        print(
-            f"Fecha vencimiento : "
-            f"{datos['fecha_vencimiento']}"
-        )
+            print(
+                f"Fecha de emisión  : "
+                f"{datos.get('fecha_emision')}"
+            )
+
+            print(
+                f"Fecha vencimiento : "
+                f"{datos.get('fecha_vencimiento')}"
+            )
 
     else:
 
-        print("LICENCIA INVÁLIDA ❌")
+        print(
+            "LICENCIA INVÁLIDA ❌"
+        )
+
         print()
-        print(f"Motivo técnico: {motivo}")
+
+        print(
+            f"Motivo técnico: {motivo}"
+        )
 
     print()
-    print("=" * 60)
-

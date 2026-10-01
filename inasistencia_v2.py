@@ -1,3 +1,4 @@
+
 # =============================================================================
 # ALTAS INASISTENCIAS DE DOCENTES - Módulo inasistencia_v2.py
 # =============================================================================
@@ -13,6 +14,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 from database import conectar
 from estilos import configurar_estilos
+from utilidades import obtener_carpeta_reportes
 
 
 # =============================================================================
@@ -537,14 +539,7 @@ class InasistenciaDocente:
             # CARPETA DE DESTINO
             # ==========================================================
 
-            carpeta_modulo = os.path.dirname(
-                os.path.abspath(__file__)
-            )
-
-            carpeta_reportes = os.path.join(
-                carpeta_modulo,
-                "reportes"
-            )
+            carpeta_reportes = obtener_carpeta_reportes()
 
             carpeta_pdf = os.path.join(
                 carpeta_reportes,

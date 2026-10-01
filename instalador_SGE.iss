@@ -1,18 +1,19 @@
+
 ; ============================================================
 ;                    INSTALADOR SGE
-;             Sistema de Gesti髇 Educativa
+;             Sistema de Gesti贸n Educativa
 ; ============================================================
 
 #define MyAppName "SGE"
 #define MyAppVersion "1.0.2"
 #define MyAppPublisher "SGE"
 #define MyAppExeName "SGE.exe"
-#define MyAppDescription "Sistema de Gesti髇 Educativa"
+#define MyAppDescription "Sistema de Gesti贸n Educativa"
 
 [Setup]
 
 ; ------------------------------------------------------------
-; Informaci髇 de la aplicaci髇
+; Informaci贸n de la aplicaci贸n
 ; ------------------------------------------------------------
 
 AppId={{SGE-SISTEMA-GESTION-EDUCATIVA}}
@@ -29,7 +30,7 @@ SetupIconFile=SGE.ico
 UninstallDisplayIcon={app}\SGE.ico
 
 ; ------------------------------------------------------------
-; Ubicaci髇 de instalaci髇
+; Ubicaci贸n de instalaci贸n
 ; ------------------------------------------------------------
 
 DefaultDirName={autopf}\SGE
@@ -43,7 +44,7 @@ OutputDir=instalador
 OutputBaseFilename=Instalador_SGE_1.0.2
 
 ; ------------------------------------------------------------
-; Compresi髇
+; Compresi贸n
 ; ------------------------------------------------------------
 
 Compression=lzma
@@ -68,10 +69,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 
 ; ------------------------------------------------------------
-; Desinstalaci髇
+; Desinstalaci贸n
 ; ------------------------------------------------------------
 
-UninstallDisplayName=SGE - Sistema de Gesti髇 Educativa
+UninstallDisplayName=SGE - Sistema de Gesti贸n Educativa
 
 ; ============================================================
 ; ARCHIVOS DEL PROGRAMA
@@ -82,6 +83,14 @@ UninstallDisplayName=SGE - Sistema de Gesti髇 Educativa
 Source: "dist\SGE\*"; \
     DestDir: "{app}"; \
     Flags: ignoreversion recursesubdirs createallsubdirs
+
+; ------------------------------------------------------------
+; Licencia de SGE
+; ------------------------------------------------------------
+
+Source: "Licenciamiento\Licencia_SGE.lic"; \
+    DestDir: "{app}"; \
+    Flags: ignoreversion
 
 ; ------------------------------------------------------------
 ; Icono de SGE
@@ -131,7 +140,7 @@ Name: "{group}\Desinstalar SGE"; \
     Filename: "{uninstallexe}"
 
 ; ============================================================
-; EJECUCI覰 AL FINAL DE LA INSTALACI覰
+; EJECUCI脫N AL FINAL DE LA INSTALACI脫N
 ; ============================================================
 
 [Run]
@@ -139,3 +148,4 @@ Name: "{group}\Desinstalar SGE"; \
 Filename: "{app}\SGE.exe"; \
     Description: "Ejecutar SGE"; \
     Flags: nowait postinstall skipifsilent
+

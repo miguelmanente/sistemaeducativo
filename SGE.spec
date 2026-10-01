@@ -1,11 +1,20 @@
-# -*- mode: python ; coding: utf-8 -*-
 
+# -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
     ['index.py'],
     pathex=[],
     binaries=[],
-    datas=[('manual', 'manual'), ('logo.png', '.'), ('logo2.png', '.'), ('logos.png', '.'), ('logotipo.png', '.')],
+    datas=[
+        ('manual', 'manual'),
+        ('logo.png', '.'),
+        ('logo2.png', '.'),
+        ('logos.png', '.'),
+        ('logotipo.png', '.'),
+
+        # Clave pública utilizada para verificar las licencias
+        ('Licenciamiento/claves/clave_publica.pem', 'claves'),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -14,6 +23,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -33,12 +43,13 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name='SGE',
 )
+

@@ -40,12 +40,64 @@ from negocio.calendario_escolar import generar_calendario
 
 # Ventana de Seguridad y Copias del SGE
 from seguridad_sge import ventana_seguridad
+from Licenciamiento.licencia import analizar_licencia
 
 
 # ------------------------------------------------ VARIABLE GLOBAL ----------------------------------------
 
 usuario_logueado = None
 
+def verificar_licencia_sge():
+
+    valida, motivo = analizar_licencia()
+
+    if valida:
+        return True
+
+    mensajes = {
+        "LICENCIA_NO_ENCONTRADA":
+            "No se encontró una licencia válida para este SGE.",
+
+        "ARCHIVO_INVALIDO":
+            "El archivo de licencia no puede ser leído.",
+
+        "ESTRUCTURA_INVALIDA":
+            "El archivo de licencia tiene una estructura incorrecta.",
+
+        "PRODUCTO_INVALIDO":
+            "La licencia no corresponde al Sistema de Gestión Educativa (SGE).",
+
+        "FIRMA_INVALIDA":
+            "La firma digital de la licencia no es válida.",
+
+        "VERSION_NO_COMPATIBLE":
+            "La licencia no corresponde a esta versión del SGE.",
+
+        "LICENCIA_VENCIDA":
+            "La licencia de SGE se encuentra vencida.",
+
+        "FECHA_INVALIDA":
+            "La fecha de vencimiento de la licencia no es válida.",
+
+        "ERROR_CLAVE_PUBLICA":
+            "No se pudo encontrar o cargar la clave pública del SGE.",
+
+        "ERROR_DESCONOCIDO":
+            "Se produjo un error desconocido al verificar la licencia."
+    }
+
+    mensaje = mensajes.get(
+        motivo,
+        "La licencia no es válida."
+    )
+
+    messagebox.showerror(
+        "Licenciamiento SGE",
+        mensaje, parent=root
+    )
+
+    return False
+#-------------------------------------------------------------------------------------
 
 # =====================================================
 #             RUTA DE RECURSOS DEL SGE
@@ -98,6 +150,9 @@ root.withdraw()
 
 root.title("SISTEMA ACADÉMICO")
 
+if not verificar_licencia_sge():
+    root.destroy()
+    sys.exit()
 
 # ---------------------------------------------------------------------------------------------------------
 #                                               LOGIN
@@ -271,7 +326,7 @@ def ventana_login(root, barramenu, lbl_usuario):
             messagebox.showinfo(
                 "Bienvenido",
                 f"Bienvenido, {usuario} ha ingresado "
-                "al Sistema de Gestión Educativa"
+                "al Sistema de Gestión Educativa",parent=login
             )
 
             login.destroy()
@@ -368,7 +423,7 @@ def ejecutar_backup():
         messagebox.showerror(
             "Acceso restringido",
             "Esta función solamente está disponible "
-            "para el administrador."
+            "para el administrador.",parent=root
         )
 
         return
@@ -411,7 +466,7 @@ def abrir_seguridad():
             "Acceso restringido",
             "Esta función solamente está disponible "
             "para el administrador."
-        )
+        , parent=root)
 
         return
 
