@@ -8,6 +8,8 @@ import os
 import uuid
 from datetime import datetime
 
+from huella_equipo import obtener_huella_equipo
+
 
 # ============================================================
 #                    UBICACIÓN DEL ARCHIVO
@@ -101,6 +103,13 @@ fecha_solicitud = datetime.now().strftime(
 
 
 # ============================================================
+#                OBTENER HUELLA DEL EQUIPO
+# ============================================================
+
+huella_equipo = obtener_huella_equipo()
+
+
+# ============================================================
 #                 CREAR DATOS DE SOLICITUD
 # ============================================================
 
@@ -116,7 +125,9 @@ solicitud = {
 
     "provincia": provincia,
 
-    "fecha_solicitud": fecha_solicitud
+    "fecha_solicitud": fecha_solicitud,
+
+    "huella_equipo": huella_equipo
 
 }
 
@@ -166,7 +177,10 @@ print("Fecha:")
 print(fecha_solicitud)
 
 print()
+print("Huella del equipo:")
+print(huella_equipo)
+
+print()
 print("La solicitud puede ser enviada al")
 print("administrador para generar la licencia.")
 print()
-
