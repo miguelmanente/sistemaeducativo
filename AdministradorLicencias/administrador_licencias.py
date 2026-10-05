@@ -967,10 +967,13 @@ def emitir_licencia():
 
 
 # =====================================================
-#             VERIFICAR LICENCIA
+
+# VERIFICAR LICENCIA
+
 # =====================================================
 
 def verificar_licencia():
+
 
     if not ARCHIVO_LICENCIA.exists():
 
@@ -1017,6 +1020,19 @@ def verificar_licencia():
 
             "FIRMA_INVALIDA":
                 "La firma digital de la licencia no es válida.",
+
+            "HUELLA_NO_ENCONTRADA":
+                "La licencia no contiene una huella de equipo.",
+
+            "HUELLA_INVALIDA":
+                "La huella del equipo almacenada en la licencia no es válida.",
+
+            "ERROR_HUELLA_EQUIPO":
+                "No se pudo obtener la huella de este equipo.",
+
+            "EQUIPO_NO_AUTORIZADO":
+                "Esta licencia pertenece a otro equipo.\n\n"
+                "El equipo actual no está autorizado para utilizarla.",
 
             "VERSION_NO_COMPATIBLE":
                 "La licencia no es compatible con esta versión del SGE.",
@@ -1151,6 +1167,7 @@ def verificar_licencia():
     ).pack(
         pady=25
     )
+
 
 
 # =====================================================
