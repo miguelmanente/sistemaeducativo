@@ -15,6 +15,19 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 # =====================================================
+#          OBTENER MÓDULO DE HUELLA DEL EQUIPO
+# =====================================================
+
+try:
+
+    from .huella_equipo import obtener_huella_equipo
+
+except ImportError:
+
+    from huella_equipo import obtener_huella_equipo
+
+
+# =====================================================
 #              CONFIGURACIÓN DEL SGE
 # =====================================================
 
@@ -26,21 +39,9 @@ VERSION_SGE = "1.0"
 # =====================================================
 
 def obtener_carpeta_sge():
+
     """
     Devuelve la carpeta principal del SGE.
-
-    DESARROLLO:
-
-        Sistema Académico\
-        ├── index.py
-        └── Licenciamiento\
-            └── licencia.py
-
-    COMPILADO:
-
-        dist\\SGE\\
-        ├── SGE.exe
-        └── ...
     """
 
     # ---------------------------------------------
@@ -131,28 +132,82 @@ def obtener_archivo_clave_publica():
     # SGE COMPILADO
     # ---------------------------------------------
 
-    # PyInstaller coloca los archivos incluidos
-    # mediante "datas" dentro de _internal.
-    #
-    # Por lo tanto, la clave pública queda en:
-    #
-    # SGE\_internal\claves\clave_publica.pem
-
-    carpeta_interna = Path(
-        sys._MEIPASS
+    carpeta_exe = (
+        Path(sys.executable).resolve().parent
     )
 
-    ruta = (
-        carpeta_interna
+    # -------------------------------------------------
+    # POSIBLE UBICACIÓN 1
+    #
+    # PyInstaller --onedir normalmente coloca los
+    # archivos adicionales dentro de:
+    #
+    # SGE\
+    # ├── SGE.exe
+    # └── _internal\
+    #     └── claves\
+    #         └── clave_publica.pem
+    # -------------------------------------------------
+
+    ruta_interna = (
+        Path(sys._MEIPASS)
         / "claves"
         / "clave_publica.pem"
     )
 
-    return (
-        ruta
-        if ruta.exists()
-        else None
+    if ruta_interna.exists():
+
+        return ruta_interna
+
+
+    # -------------------------------------------------
+    # POSIBLE UBICACIÓN 2
+    #
+    # Permite una distribución donde la carpeta
+    # claves queda junto al ejecutable:
+    #
+    # SGE\
+    # ├── SGE.exe
+    # └── claves\
+    #     └── clave_publica.pem
+    # -------------------------------------------------
+
+    ruta_junto_exe = (
+        carpeta_exe
+        / "claves"
+        / "clave_publica.pem"
     )
+
+    if ruta_junto_exe.exists():
+
+        return ruta_junto_exe
+
+
+    # -------------------------------------------------
+    # POSIBLE UBICACIÓN 3
+    #
+    # Algunos esquemas de distribución pueden dejar
+    # los archivos internos directamente bajo la
+    # carpeta _internal del ejecutable.
+    # -------------------------------------------------
+
+    ruta_internal_exe = (
+        carpeta_exe
+        / "_internal"
+        / "claves"
+        / "clave_publica.pem"
+    )
+
+    if ruta_internal_exe.exists():
+
+        return ruta_internal_exe
+
+
+    # ---------------------------------------------
+    # No encontrada
+    # ---------------------------------------------
+
+    return None
 
 
 # =====================================================
@@ -246,7 +301,8 @@ def validar_estructura(licencia):
         "tipo",
         "version",
         "fecha_emision",
-        "fecha_vencimiento"
+        "fecha_vencimiento",
+        "huella_equipo"
     ]
 
     for campo in campos_obligatorios:
@@ -297,6 +353,118 @@ def verificar_firma(licencia):
     except Exception:
 
         return False
+
+
+# =====================================================
+#          VALIDAR HUELLA DEL EQUIPO
+# =====================================================
+
+def validar_huella_formato(huella):
+
+    if not isinstance(
+        huella,
+        str
+    ):
+
+        return False
+
+    huella = huella.strip()
+
+    if len(huella) != 64:
+
+        return False
+
+    try:
+
+        int(
+            huella,
+            16
+        )
+
+    except ValueError:
+
+        return False
+
+    return True
+
+
+# =====================================================
+#       VERIFICAR HUELLA DEL EQUIPO
+# =====================================================
+
+def verificar_huella_equipo(datos):
+
+    huella_licencia = datos.get(
+        "huella_equipo"
+    )
+
+    # ---------------------------------------------
+    # La licencia no contiene huella
+    # ---------------------------------------------
+
+    if huella_licencia is None:
+
+        return (
+            False,
+            "HUELLA_NO_ENCONTRADA"
+        )
+
+
+    # ---------------------------------------------
+    # Validar formato
+    # ---------------------------------------------
+
+    if not validar_huella_formato(
+        huella_licencia
+    ):
+
+        return (
+            False,
+            "HUELLA_INVALIDA"
+        )
+
+
+    # ---------------------------------------------
+    # Obtener huella actual
+    # ---------------------------------------------
+
+    try:
+
+        huella_actual = (
+            obtener_huella_equipo()
+        )
+
+    except Exception:
+
+        return (
+            False,
+            "ERROR_HUELLA_EQUIPO"
+        )
+
+
+    # ---------------------------------------------
+    # Comparar huellas
+    # ---------------------------------------------
+
+    if (
+        huella_actual.upper()
+        != huella_licencia.upper()
+    ):
+
+        return (
+            False,
+            "EQUIPO_NO_AUTORIZADO"
+        )
+
+
+    # ---------------------------------------------
+    # Equipo autorizado
+    # ---------------------------------------------
+
+    return (
+        True,
+        "EQUIPO_AUTORIZADO"
+    )
 
 
 # =====================================================
@@ -511,6 +679,28 @@ def analizar_licencia(
         return (
             False,
             "FIRMA_INVALIDA"
+        )
+
+
+    # =================================================
+    # VERIFICAR HUELLA DEL EQUIPO
+    #
+    # La firma ya fue comprobada.
+    # Por lo tanto, ahora podemos confiar en la huella
+    # que contiene la licencia.
+    # =================================================
+
+    equipo_autorizado, motivo_huella = (
+        verificar_huella_equipo(
+            datos
+        )
+    )
+
+    if not equipo_autorizado:
+
+        return (
+            False,
+            motivo_huella
         )
 
 
@@ -733,6 +923,11 @@ if __name__ == "__main__":
             print(
                 f"Fecha vencimiento : "
                 f"{datos.get('fecha_vencimiento')}"
+            )
+
+            print(
+                f"Huella del equipo : "
+                f"{datos.get('huella_equipo')}"
             )
 
     else:
