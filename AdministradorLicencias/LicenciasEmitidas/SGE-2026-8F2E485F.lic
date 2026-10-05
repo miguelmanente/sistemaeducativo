@@ -1,0 +1,16 @@
+{
+    "datos": {
+        "producto": "SGE",
+        "id_licencia": "SGE-2026-8F2E485F",
+        "id_solicitud": "8f9b15a7-e100-4973-ac24-1ff97ed22a6f",
+        "institucion": "Particular",
+        "localidad": "San Nicolás",
+        "provincia": "Buenos Aires",
+        "tipo": "prueba",
+        "version": "1.0",
+        "fecha_emision": "2026-10-05",
+        "fecha_vencimiento": "2026-11-04",
+        "huella_equipo": "C6E54137649EFD300C27C7D8655208ECF99BEA6A97ED761881088848CD5D1429"
+    },
+    "firma": "ZKFur2PeXl9HvQlsIOknOjOsx1c7UYK38cXDeVg2IdAhNFoVmUQZ//md9LMaOey5HVbh6WJisFnu2usdGMOiCw=="
+}

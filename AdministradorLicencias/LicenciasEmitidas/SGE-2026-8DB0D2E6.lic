@@ -1,0 +1,15 @@
+{
+    "datos": {
+        "producto": "SGE",
+        "id_licencia": "SGE-2026-8DB0D2E6",
+        "id_solicitud": "125b0553-7908-4e08-aba9-670195e7e622",
+        "institucion": "EET N°3",
+        "localidad": "San Nicolás",
+        "provincia": "Bs As",
+        "tipo": "permanente",
+        "version": "1.0",
+        "fecha_emision": "2026-10-03",
+        "fecha_vencimiento": null
+    },
+    "firma": "cgeT55mqsvBEzonhQfk18u6Ynjsb6uQMLOxzSOYPIXhCTz5V3gn0n3Hv0qSoD7P6jkEHPN9Sg83S7SrRTjOTBQ=="
+}
