@@ -1,1306 +1,280 @@
-# =====================================================
-# INSTALADOR SGE
-# INSTALACIÓN Y ACTIVACIÓN DEL SISTEMA
-# =====================================================
+# ============================================================
+# ACTIVACIÓN DEL SGE
+# Herramienta para uso del técnico que instala el sistema.
+# NO contiene ni utiliza la clave privada de firma.
+# ============================================================
 
-import tkinter as tk
-from tkinter import messagebox
-
+import json
+import re
+import shutil
 import subprocess
 import sys
 import uuid
-import traceback
-
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
+from Licenciamiento.huella_equipo import obtener_huella_equipo
+from Licenciamiento.licencia import analizar_licencia
 
-# =====================================================
-# CONFIGURACIÓN DE RUTAS
-# =====================================================
-
-#BASE_DIR = Path(__file__).resolve().parent.parent
-
-#if str(BASE_DIR) not in sys.path:
-    #sys.path.insert(0, str(BASE_DIR))
-
-
-#CARPETA_ADMINISTRADOR = (
-    #BASE_DIR / "AdministradorLicencias")
-
-#if str(CARPETA_ADMINISTRADOR) not in sys.path:sys.path.insert(0, str(CARPETA_ADMINISTRADOR))
+NOMBRE_APLICACION = "Activación SGE"
 
 if getattr(sys, "frozen", False):
-    BASE_DIR = Path(sys.executable).resolve().parent
+    CARPETA_INSTALACION = Path(sys.executable).resolve().parent
 else:
-    BASE_DIR = Path(__file__).resolve().parent
+    CARPETA_INSTALACION = Path(__file__).resolve().parent
 
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
-
-# =====================================================
-# IMPORTACIONES SGE
-# =====================================================
-
-from Licenciamiento.huella_equipo import (
-    obtener_huella_equipo
-)
-
-from Licenciamiento.licencia import (
-    analizar_licencia
-)
-
-from generar_licencia import (
-    generar_licencia_desde_datos
-)
-
-
-# =====================================================
-# RUTAS DEL SISTEMA
-# =====================================================
-
-#CARPETA_INSTALACION = Path("C:/SGE")
-CARPETA_INSTALACION = BASE_DIR
-
-ARCHIVO_SGE = (
-    CARPETA_INSTALACION
-    / "SGE.exe"
-)
-
-ARCHIVO_LICENCIA = (
-    CARPETA_INSTALACION
-    / "Licencia_SGE.lic"
-)
-
-
-# =====================================================
-# DATOS DEL EQUIPO
-# =====================================================
+ARCHIVO_SGE = CARPETA_INSTALACION / "SGE.exe"
+ARCHIVO_LICENCIA = CARPETA_INSTALACION / "Licencia_SGE.lic"
 
 try:
+    HUELLA_EQUIPO = str(obtener_huella_equipo()).strip().upper()
+    if not re.fullmatch(r"[A-F0-9]{64}", HUELLA_EQUIPO):
+        raise ValueError("La huella obtenida no tiene 64 caracteres hexadecimales.")
+    ERROR_HUELLA = None
+except Exception as exc:
+    HUELLA_EQUIPO = ""
+    ERROR_HUELLA = str(exc)
 
-    huella_equipo = obtener_huella_equipo()
-
-except Exception as e:
-
-    print("ERROR AL OBTENER HUELLA DEL EQUIPO:")
-    print(e)
-
-    huella_equipo = ""
-
-
-# =====================================================
-# FUNCIONES AUXILIARES
-# =====================================================
-
-def verificar_sge_instalado():
-    """
-    Verifica que Inno Setup ya haya instalado SGE en C:\\SGE.
-    El administrador de licencias no copia ni instala SGE.
-    """
-
-    if not CARPETA_INSTALACION.exists():
-        raise FileNotFoundError(
-            "No se encontró la carpeta de instalación de SGE:\n\n"
-            f"{CARPETA_INSTALACION}\n\n"
-            "El SGE debe ser instalado previamente por el instalador "
-            "principal."
-        )
-
-    if not ARCHIVO_SGE.exists():
-        raise FileNotFoundError(
-            "No se encontró SGE.exe en:\n\n"
-            f"{ARCHIVO_SGE}\n\n"
-            "El SGE debe ser instalado previamente por el instalador "
-            "principal."
-        )
-
-    return True
-
-
-# =====================================================
-# CONSTRUIR SOLICITUD DE LICENCIA
-# =====================================================
 
 def construir_solicitud():
+    institucion = entrada_institucion.get().strip()
+    localidad = entrada_localidad.get().strip()
+    provincia = entrada_provincia.get().strip()
 
-    solicitud = {
+    if not institucion or not localidad or not provincia:
+        raise ValueError("Completá institución, localidad y provincia.")
+    if not HUELLA_EQUIPO:
+        raise ValueError("No se pudo obtener la huella de este equipo.\n\n" + (ERROR_HUELLA or ""))
 
+    return {
         "producto": "SGE",
-
-        "id_solicitud": str(
-            uuid.uuid4()
-        ),
-
-        "institucion": (
-            entrada_institucion
-            .get()
-            .strip()
-        ),
-
-        "localidad": (
-            entrada_localidad
-            .get()
-            .strip()
-        ),
-
-        "provincia": (
-            entrada_provincia
-            .get()
-            .strip()
-        ),
-
-        "fecha_solicitud": (
-            datetime.now()
-            .strftime("%Y-%m-%d %H:%M:%S")
-        ),
-
-        "huella_equipo": (
-            huella_equipo
-            .strip()
-            .upper()
-        )
+        "id_solicitud": str(uuid.uuid4()),
+        "institucion": institucion,
+        "localidad": localidad,
+        "provincia": provincia,
+        "fecha_solicitud": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "huella_equipo": HUELLA_EQUIPO,
     }
 
-    return solicitud
 
-
-# =====================================================
-# GENERAR LICENCIA SGE
-# =====================================================
-
-def generar_licencia():
-
-    solicitud = construir_solicitud()
-
-    tipo = tipo_licencia.get()
-
-    dias_prueba = None
-
-    if tipo == "prueba":
-
-        dias_prueba = 30
-
-
-    datos_licencia, archivo_generado = (
-        generar_licencia_desde_datos(
-
-            solicitud=solicitud,
-
-            tipo=tipo,
-
-            version="1.0",
-
-            dias_prueba=dias_prueba,
-
-            ruta_salida=ARCHIVO_LICENCIA
-        )
-    )
-
-
-    return datos_licencia, archivo_generado
-
-
-# =====================================================
-# VERIFICAR LICENCIA GENERADA
-# =====================================================
-
-def verificar_licencia_instalada():
-
-    if not ARCHIVO_LICENCIA.exists():
-
-        return (
-            False,
-            "No se encontró el archivo de licencia generado."
-        )
-
-
-    resultado, motivo = analizar_licencia(
-        ARCHIVO_LICENCIA
-    )
-
-
-    if resultado:
-
-        return (
-            True,
-            motivo
-        )
-
-
-    return (
-        False,
-        motivo
-    )
-
-
-# =====================================================
-# INICIAR SGE
-# =====================================================
-
-def iniciar_sge():
-
-    if not ARCHIVO_SGE.exists():
-
-        messagebox.showerror(
-            "ERROR",
-            "No se encontró SGE.exe en:\n\n"
-            f"{ARCHIVO_SGE}"
-        )
-
+def guardar_solicitud():
+    try:
+        solicitud = construir_solicitud()
+    except Exception as exc:
+        messagebox.showerror(NOMBRE_APLICACION, str(exc), parent=ventana)
         return
 
+    destino = filedialog.asksaveasfilename(
+        parent=ventana,
+        title="Guardar solicitud para emitir la licencia",
+        initialfile="Solicitud_SGE.dat",
+        defaultextension=".dat",
+        filetypes=[("Solicitud SGE", "*.dat"), ("Todos los archivos", "*.*")],
+    )
+    if not destino:
+        return
 
     try:
-
-        subprocess.Popen(
-            [str(ARCHIVO_SGE)],
-            cwd=str(CARPETA_INSTALACION)
+        with open(destino, "w", encoding="utf-8") as archivo:
+            json.dump(solicitud, archivo, ensure_ascii=False, indent=4)
+        messagebox.showinfo(
+            NOMBRE_APLICACION,
+            "Solicitud creada correctamente.\n\n"
+            f"Archivo:\n{destino}\n\n"
+            "Llevá el archivo al equipo donde está tu Administrador de Licencias. "
+            "Importalo allí y emití la licencia. Después traé el archivo .lic "
+            "emitido e importalo en esta ventana.\n\n"
+            "Esta herramienta no firma licencias y no contiene la clave privada.",
+            parent=ventana,
         )
+        actualizar_estado()
+    except Exception as exc:
+        messagebox.showerror(NOMBRE_APLICACION, f"No se pudo guardar la solicitud.\n\n{exc}", parent=ventana)
 
 
-        ventana.destroy()
-
-
-    except Exception as e:
-
-        traceback.print_exc()
-
-        messagebox.showerror(
-            "ERROR AL INICIAR SGE",
-            str(e)
-        )
-
-
-# =====================================================
-# INSTALAR Y ACTIVAR SGE
-# =====================================================
-
-def instalar_y_activar():
-
-    print()
-    print("=" * 60)
-    print("BOTÓN INSTALAR Y ACTIVAR SGE PRESIONADO")
-    print("=" * 60)
-
+def importar_licencia():
+    origen = filedialog.askopenfilename(
+        parent=ventana,
+        title="Seleccionar licencia emitida por el Administrador de Licencias",
+        filetypes=[("Licencia SGE", "*.lic"), ("Todos los archivos", "*.*")],
+    )
+    if not origen:
+        return
 
     try:
-
-        # -------------------------------------------------
-        # Obtener datos
-        # -------------------------------------------------
-
-        institucion = (
-            entrada_institucion
-            .get()
-            .strip()
-        )
-
-        localidad = (
-            entrada_localidad
-            .get()
-            .strip()
-        )
-
-        provincia = (
-            entrada_provincia
-            .get()
-            .strip()
-        )
-
-
-        print("Institución:", institucion)
-        print("Localidad:", localidad)
-        print("Provincia:", provincia)
-        print("Tipo:", tipo_licencia.get())
-        print("Huella:", huella_equipo)
-
-
-        # =================================================
-        # VALIDAR DATOS
-        # =================================================
-
-        if not institucion:
-
-            messagebox.showwarning(
-                "DATOS INCOMPLETOS",
-                "Ingrese el nombre de la institución.",
-                parent=ventana
-            )
-
-            entrada_institucion.focus()
-
-            return
-
-
-        if not localidad:
-
-            messagebox.showwarning(
-                "DATOS INCOMPLETOS",
-                "Ingrese la localidad.",
-                parent=ventana
-            )
-
-            entrada_localidad.focus()
-
-            return
-
-
-        if not provincia:
-
-            messagebox.showwarning(
-                "DATOS INCOMPLETOS",
-                "Ingrese la provincia.",
-                parent=ventana
-            )
-
-            entrada_provincia.focus()
-
-            return
-
-
-        if not huella_equipo:
-
-            messagebox.showerror(
-                "ERROR",
-                "No fue posible obtener la huella "
-                "del equipo.",
-                parent=ventana
-            )
-
-            return
-
-
-        # =================================================
-        # CONFIRMACIÓN
-        # =================================================
-
-        print("Mostrando cuadro de confirmación...")
-
-
-        confirmacion = messagebox.askyesno(
-
-            "CONFIRMAR INSTALACIÓN",
-
-            "Se activará SGE en este equipo.\n\n"
-
-            f"Institución:\n{institucion}\n\n"
-
-            f"Localidad:\n{localidad}\n\n"
-
-            f"Provincia:\n{provincia}\n\n"
-
-            f"Tipo de licencia:\n"
-            f"{tipo_licencia.get().capitalize()}\n\n"
-
-            f"Equipo autorizado:\n"
-            f"{huella_equipo}\n\n"
-
-            "La licencia quedará vinculada "
-            "a este equipo.\n\n"
-
-            "¿Desea continuar?",
-
-            parent=ventana
-        )
-
-
-        print(
-            "Respuesta de confirmación:",
-            confirmacion
-        )
-
-
-        if not confirmacion:
-
-            print("Instalación cancelada.")
-
-            return
-
-
-        # =================================================
-        # VERIFICAR SGE INSTALADO
-        # =================================================
-
-        print("Verificando instalación de SGE...")
-
-        try:
-
-            verificar_sge_instalado()
-
-            print("SGE encontrado correctamente:")
-            print(ARCHIVO_SGE)
-
-        except Exception as e:
-
-            print("ERROR: SGE NO ENCONTRADO:")
-            traceback.print_exc()
-
-            messagebox.showerror(
-
-                "SGE NO ENCONTRADO",
-
-                "No se encontró SGE.exe en la ubicación "
-                "de instalación esperada.\n\n"
-
-                f"{ARCHIVO_SGE}\n\n"
-
-                "El SGE debe ser instalado previamente "
-                "por el instalador principal.",
-
-                parent=ventana
-            )
-
-            return
-
-
-        # =================================================
-        # GENERAR LICENCIA
-        # =================================================
-
-        print("Generando licencia...")
-
-
-        try:
-
-            datos_licencia, archivo_generado = (
-                generar_licencia()
-            )
-
-            print(
-                "Licencia generada:",
-                archivo_generado
-            )
-
-
-        except Exception as e:
-
-            print("ERROR AL GENERAR LICENCIA:")
-            traceback.print_exc()
-
-            messagebox.showerror(
-
-                "ERROR DE ACTIVACIÓN",
-
-                "No fue posible generar la licencia.\n\n"
-                f"{e}",
-
-                parent=ventana
-            )
-
-            return
-
-
-        # =================================================
-        # VERIFICAR LICENCIA
-        # =================================================
-
-        print("Verificando licencia...")
-
-
-        try:
-
-            licencia_valida, motivo = (
-                verificar_licencia_instalada()
-            )
-
-            print(
-                "Licencia válida:",
-                licencia_valida
-            )
-
-            print(
-                "Motivo:",
-                motivo
-            )
-
-
-        except Exception as e:
-
-            print("ERROR DE VERIFICACIÓN:")
-            traceback.print_exc()
-
-            messagebox.showerror(
-
-                "ERROR DE VERIFICACIÓN",
-
-                "La licencia fue generada pero "
-                "no pudo ser verificada.\n\n"
-                f"{e}",
-
-                parent=ventana
-            )
-
-            return
-
-
-        # =================================================
-        # LICENCIA INVÁLIDA
-        # =================================================
-
-        if not licencia_valida:
-
-            messagebox.showerror(
-
-                "LICENCIA NO VÁLIDA",
-
-                "La licencia fue generada pero "
-                "la verificación no fue exitosa.\n\n"
-                f"Motivo: {motivo}",
-
-                parent=ventana
-            )
-
-            return
-
-
-        # =================================================
-        # ACTIVACIÓN COMPLETADA
-        # =================================================
-
-        print("LICENCIA VÁLIDA.")
-        print("Mostrando pantalla de finalización...")
-
-
-        mostrar_finalizacion(
-            datos_licencia
-        )
-
-
-    except Exception as e:
-
-        print()
-        print("=" * 60)
-        print("ERROR NO CONTROLADO EN INSTALAR_Y_ACTIVAR")
-        print("=" * 60)
-
-        traceback.print_exc()
-
-
+        valida, motivo = analizar_licencia(str(origen))
+    except Exception as exc:
+        messagebox.showerror(NOMBRE_APLICACION, f"No se pudo analizar la licencia.\n\n{exc}", parent=ventana)
+        return
+
+    if not valida:
         messagebox.showerror(
-
-            "ERROR INESPERADO",
-
-            "Se produjo un error inesperado en el instalador.\n\n"
-
-            f"{type(e).__name__}: {e}",
-
-            parent=ventana
+            NOMBRE_APLICACION,
+            "La licencia no es válida para este equipo.\n\n"
+            f"Motivo: {motivo}\n\n"
+            "No se reemplazó ninguna licencia instalada.",
+            parent=ventana,
         )
+        return
 
+    respaldo = CARPETA_INSTALACION / "Licencia_SGE.lic.bak"
+    habia_anterior = ARCHIVO_LICENCIA.exists()
 
-# =====================================================
-# VENTANA / PANTALLA DE FINALIZACIÓN
-# =====================================================
-
-def mostrar_finalizacion(datos_licencia):
-
-    print()
-    print("=" * 60)
-    print("ENTRANDO EN MOSTRAR_FINALIZACION")
-    print("=" * 60)
-
+    if habia_anterior:
+        confirmar = messagebox.askyesno(
+            NOMBRE_APLICACION,
+            "Ya existe una licencia en la carpeta del SGE.\n\n"
+            "¿Querés reemplazarla por la licencia seleccionada?",
+            parent=ventana,
+        )
+        if not confirmar:
+            return
 
     try:
+        if habia_anterior:
+            shutil.copy2(ARCHIVO_LICENCIA, respaldo)
+        shutil.copy2(origen, ARCHIVO_LICENCIA)
 
-        # =================================================
-        # ELIMINAR CONTENIDO DE LA VENTANA PRINCIPAL
-        # =================================================
-
-        for widget in ventana.winfo_children():
-
-            widget.destroy()
-
-
-        # =================================================
-        # CONFIGURAR VENTANA FINAL
-        # =================================================
-
-        ventana.title(
-            "SGE - Instalación completada"
-        )
-
-        ventana.geometry(
-            "650x600"
-        )
-
-        ventana.resizable(
-            False,
-            False
-        )
-
-
-        # =================================================
-        # CENTRAR VENTANA
-        # =================================================
-
-        ventana.update_idletasks()
-
-        ancho = 650
-        alto = 600
-
-        ancho_pantalla = (
-            ventana.winfo_screenwidth()
-        )
-
-        alto_pantalla = (
-            ventana.winfo_screenheight()
-        )
-
-        posicion_x = (
-            ancho_pantalla - ancho
-        ) // 2
-
-        posicion_y = (
-            alto_pantalla - alto
-        ) // 2
-
-        ventana.geometry(
-            f"{ancho}x{alto}+"
-            f"{posicion_x}+{posicion_y}"
-        )
-
-
-        # =================================================
-        # FORZAR VENTANA AL FRENTE
-        # =================================================
-
-        ventana.deiconify()
-
-        ventana.lift()
-
-        ventana.attributes(
-            "-topmost",
-            True
-        )
-
-        ventana.after(
-            800,
-            lambda: ventana.attributes(
-                "-topmost",
-                False
+        valida_copia, motivo_copia = analizar_licencia(str(ARCHIVO_LICENCIA))
+        if not valida_copia:
+            if habia_anterior and respaldo.exists():
+                shutil.copy2(respaldo, ARCHIVO_LICENCIA)
+            else:
+                ARCHIVO_LICENCIA.unlink(missing_ok=True)
+            messagebox.showerror(
+                NOMBRE_APLICACION,
+                "La licencia copiada no superó la verificación final.\n\n"
+                f"Motivo: {motivo_copia}\n\n"
+                "Se restauró la licencia anterior, si existía.",
+                parent=ventana,
             )
+            return
+
+        messagebox.showinfo(
+            NOMBRE_APLICACION,
+            "¡SGE activado correctamente!\n\n"
+            f"Licencia instalada en:\n{ARCHIVO_LICENCIA}\n\n"
+            "Ya podés iniciar SGE.",
+            parent=ventana,
         )
-
-        ventana.focus_force()
-
-
-        # =================================================
-        # ENCABEZADO
-        # =================================================
-
-        titulo = tk.Label(
-            ventana,
-            text="SGE",
-            font=(
-                "Segoe UI",
-                30,
-                "bold"
-            )
-        )
-
-        titulo.pack(
-            pady=(30, 5)
-        )
-
-
-        subtitulo = tk.Label(
-            ventana,
-            text="Sistema de Gestión Escolar",
-            font=(
-                "Segoe UI",
-                15
-            )
-        )
-
-        subtitulo.pack(
-            pady=(0, 20)
-        )
-
-
-        # =================================================
-        # MENSAJE PRINCIPAL
-        # =================================================
-
-        mensaje = tk.Label(
-            ventana,
-            text=(
-                "SGE fue instalado y activado "
-                "correctamente."
-            ),
-            font=(
-                "Segoe UI",
-                15,
-                "bold"
-            )
-        )
-
-        mensaje.pack(
-            pady=10
-        )
-
-
-        # =================================================
-        # INFORMACIÓN DE LA LICENCIA
-        # =================================================
-
-        informacion = (
-
-            f"Institución: "
-            f"{datos_licencia['institucion']}\n\n"
-
-            f"Localidad: "
-            f"{datos_licencia['localidad']}\n\n"
-
-            f"Provincia: "
-            f"{datos_licencia['provincia']}\n\n"
-
-            f"Tipo de licencia: "
-            f"{datos_licencia['tipo'].capitalize()}\n\n"
-
-            f"Versión: "
-            f"{datos_licencia['version']}\n\n"
-
-            "Equipo autorizado: Sí"
-        )
-
-
-        etiqueta_informacion = tk.Label(
-            ventana,
-            text=informacion,
-            font=(
-                "Segoe UI",
-                11
-            ),
-            justify="left"
-        )
-
-        etiqueta_informacion.pack(
-            pady=15
-        )
-
-
-        # =================================================
-        # MARCO DE BOTONES
-        # =================================================
-
-        marco_botones = tk.Frame(
-            ventana
-        )
-
-        marco_botones.pack(
-            pady=20
-        )
-
-
-        # =================================================
-        # BOTÓN INICIAR SGE
-        # =================================================
-
-        boton_iniciar = tk.Button(
-            marco_botones,
-            text="INICIAR SGE",
-            font=(
-                "Segoe UI",
-                12,
-                "bold"
-            ),
-            width=20,
-            height=2,
-            command=iniciar_sge
-        )
-
-        boton_iniciar.pack(
-            side="left",
-            padx=10
-        )
-
-
-        # =================================================
-        # BOTÓN CERRAR
-        # =================================================
-
-        boton_cerrar = tk.Button(
-            marco_botones,
-            text="CERRAR",
-            font=(
-                "Segoe UI",
-                10,
-                "bold"
-            ),
-            width=20,
-            height=2,
-            command=ventana.destroy
-        )
-
-        boton_cerrar.pack(
-            side="left",
-            padx=10
-        )
-
-
-        # =================================================
-        # INFORMACIÓN FINAL
-        # =================================================
-
-        tk.Label(
-            ventana,
-            text=(
-                "La licencia quedó vinculada "
-                "a este equipo."
-            ),
-            font=(
-                "Segoe UI",
-                9
-            )
-        ).pack(
-            side="bottom",
-            pady=15
-        )
-
-
-        # =================================================
-        # ACTUALIZAR PANTALLA
-        # =================================================
-
-        ventana.update_idletasks()
-
-        ventana.lift()
-
-        ventana.focus_force()
-
-
-        print("PANTALLA DE FINALIZACIÓN MOSTRADA")
-        print("=" * 60)
-
-
-    except Exception as e:
-
-        print()
-        print("=" * 60)
-        print("ERROR DENTRO DE MOSTRAR_FINALIZACION")
-        print("=" * 60)
-
-        traceback.print_exc()
-
-
-        # En este caso NO ocultamos la ventana.
-        # Mostramos el error directamente.
-
+        actualizar_estado()
+    except PermissionError:
         messagebox.showerror(
-
-            "ERROR EN PANTALLA FINAL",
-
-            "La instalación terminó correctamente, "
-            "pero ocurrió un error al mostrar "
-            "la pantalla final.\n\n"
-
-            f"{type(e).__name__}: {e}",
-
-            parent=ventana
+            NOMBRE_APLICACION,
+            "Windows no permitió guardar la licencia en la carpeta del SGE.\n\n"
+            "Volvé a abrir esta herramienta como administrador y repetí la importación.",
+            parent=ventana,
         )
+    except Exception as exc:
+        messagebox.showerror(NOMBRE_APLICACION, f"No se pudo instalar la licencia.\n\n{exc}", parent=ventana)
 
 
-# =====================================================
-# INTERFAZ GRÁFICA
-# =====================================================
+def licencia_instalada_valida():
+    if not ARCHIVO_LICENCIA.is_file():
+        return False, "No hay una licencia instalada junto a SGE.exe."
+    try:
+        return analizar_licencia(str(ARCHIVO_LICENCIA))
+    except Exception as exc:
+        return False, str(exc)
+
+
+def iniciar_sge():
+    valida, motivo = licencia_instalada_valida()
+    if not valida:
+        messagebox.showwarning(
+            NOMBRE_APLICACION,
+            "Primero importá una licencia válida.\n\n" + str(motivo),
+            parent=ventana,
+        )
+        return
+    if not ARCHIVO_SGE.is_file():
+        messagebox.showerror(
+            NOMBRE_APLICACION,
+            f"No se encontró SGE.exe en:\n{ARCHIVO_SGE}",
+            parent=ventana,
+        )
+        return
+    try:
+        subprocess.Popen([str(ARCHIVO_SGE)], cwd=str(CARPETA_INSTALACION))
+    except Exception as exc:
+        messagebox.showerror(NOMBRE_APLICACION, f"No se pudo iniciar SGE.\n\n{exc}", parent=ventana)
+
+
+def actualizar_estado():
+    valida, motivo = licencia_instalada_valida()
+    if valida:
+        etiqueta_estado.config(text="Estado: ACTIVADO", fg="#176534")
+    else:
+        etiqueta_estado.config(text="Estado: PENDIENTE DE ACTIVACIÓN", fg="#8A4B08")
+
 
 ventana = tk.Tk()
+ventana.title("SGE - Activación")
+ventana.geometry("680x570")
+ventana.minsize(620, 520)
+ventana.resizable(True, True)
 
-ventana.title(
-    "ACTIVACIÓN SGE"
-)
-
-ventana.geometry(
-    "700x700"
-)
-
-ventana.resizable(
-    False,
-    False
-)
-
-
-# =====================================================
-# TÍTULO
-# =====================================================
-
-titulo = tk.Label(
-    ventana,
-    text="ACTIVACIÓN SGE",
-    font=(
-        "Segoe UI",
-        18,
-        "bold"
-    )
-)
-
-titulo.pack(
-    pady=(10, 5)
-)
-
-
-subtitulo = tk.Label(
-    ventana,
-    text="Sistema de Gestión Escolar",
-    font=(
-        "Segoe UI",
-        14
-    )
-)
-
-subtitulo.pack(
-    pady=(0, 10)
-)
-
-
-# =====================================================
-# DATOS DE LA INSTITUCIÓN
-# =====================================================
-
-marco_datos = tk.LabelFrame(
-    ventana,
-    text="Datos de la institución",
-    font=(
-        "Segoe UI",
-        11,
-        "bold"
-    ),
-    padx=20,
-    pady=8
-)
-
-marco_datos.pack(
-    padx=40,
-    fill="x"
-)
-
-
-# -----------------------------------------------------
-# Institución
-# -----------------------------------------------------
+contenedor = tk.Frame(ventana, padx=24, pady=18)
+contenedor.pack(fill="both", expand=True)
 
 tk.Label(
-    marco_datos,
-    text="Institución:",
-    font=(
-        "Segoe UI",
-        10
-    )
-).grid(
-    row=0,
-    column=0,
-    sticky="w",
-    pady=8
-)
-
-
-entrada_institucion = tk.Entry(
-    marco_datos,
-    font=(
-        "Segoe UI",
-        10
-    ),
-    width=45
-)
-
-entrada_institucion.grid(
-    row=0,
-    column=1,
-    padx=10,
-    pady=8
-)
-
-
-# -----------------------------------------------------
-# Localidad
-# -----------------------------------------------------
+    contenedor,
+    text="ACTIVACIÓN DEL SGE",
+    font=("Segoe UI", 18, "bold"),
+).pack(pady=(0, 4))
 
 tk.Label(
-    marco_datos,
-    text="Localidad:",
-    font=(
-        "Segoe UI",
-        10
-    )
-).grid(
-    row=1,
-    column=0,
-    sticky="w",
-    pady=8
-)
-
-
-entrada_localidad = tk.Entry(
-    marco_datos,
-    font=(
-        "Segoe UI",
-        10
-    ),
-    width=45
-)
-
-entrada_localidad.grid(
-    row=1,
-    column=1,
-    padx=10,
-    pady=8
-)
-
-
-# -----------------------------------------------------
-# Provincia
-# -----------------------------------------------------
-
-tk.Label(
-    marco_datos,
-    text="Provincia:",
-    font=(
-        "Segoe UI",
-        10
-    )
-).grid(
-    row=2,
-    column=0,
-    sticky="w",
-    pady=8
-)
-
-
-entrada_provincia = tk.Entry(
-    marco_datos,
-    font=(
-        "Segoe UI",
-        10
-    ),
-    width=45
-)
-
-entrada_provincia.grid(
-    row=2,
-    column=1,
-    padx=10,
-    pady=8
-)
-
-
-# =====================================================
-# TIPO DE LICENCIA
-# =====================================================
-
-marco_licencia = tk.LabelFrame(
-    ventana,
-    text="Tipo de licencia",
-    font=(
-        "Segoe UI",
-        11,
-        "bold"
-    ),
-    padx=20,
-    pady=10
-)
-
-marco_licencia.pack(
-    padx=40,
-    pady=20,
-    fill="x"
-)
-
-
-tipo_licencia = tk.StringVar(
-    value="permanente"
-)
-
-
-# -----------------------------------------------------
-# Licencia de prueba
-# -----------------------------------------------------
-
-tk.Radiobutton(
-    marco_licencia,
-    text="Prueba (30 días)",
-    variable=tipo_licencia,
-    value="prueba",
-    font=(
-        "Segoe UI",
-        10
-    )
-).pack(
-    anchor="w"
-)
-
-
-# -----------------------------------------------------
-# Licencia anual
-# -----------------------------------------------------
-
-tk.Radiobutton(
-    marco_licencia,
-    text="Anual",
-    variable=tipo_licencia,
-    value="anual",
-    font=(
-        "Segoe UI",
-        10
-    )
-).pack(
-    anchor="w"
-)
-
-
-# -----------------------------------------------------
-# Licencia permanente
-# -----------------------------------------------------
-
-tk.Radiobutton(
-    marco_licencia,
-    text="Permanente",
-    variable=tipo_licencia,
-    value="permanente",
-    font=(
-        "Segoe UI",
-        10
-    )
-).pack(
-    anchor="w"
-)
-
-
-# =====================================================
-# HUELLA DEL EQUIPO
-# =====================================================
-
-marco_huella = tk.LabelFrame(
-    ventana,
-    text="Equipo autorizado",
-    font=(
-        "Segoe UI",
-        11,
-        "bold"
-    ),
-    padx=20,
-    pady=5
-)
-
-marco_huella.pack(
-    padx=40,
-    pady=5,
-    fill="x"
-)
-
-
-tk.Label(
-    marco_huella,
-    text="Huella del equipo:",
-    font=(
-        "Segoe UI",
-        10
-    )
-).pack(
-    anchor="w"
-)
-
-
-entrada_huella = tk.Entry(
-    marco_huella,
-    font=(
-        "Consolas",
-        9
-    ),
-    width=75,
-    state="readonly"
-)
-
-entrada_huella.pack(
-    pady=8
-)
-
-
-entrada_huella.config(
-    state="normal"
-)
-
-entrada_huella.insert(
-    0,
-    huella_equipo
-)
-
-entrada_huella.config(
-    state="readonly"
-)
-
-
-# =====================================================
-# INFORMACIÓN DE SEGURIDAD
-# =====================================================
-
-tk.Label(
-    ventana,
+    contenedor,
     text=(
-        "La licencia quedará vinculada automáticamente "
-        "a este equipo.\n"
-        "El SGE no podrá utilizar esta licencia en "
-        "otro equipo."
+        "Herramienta para el técnico instalador. Generá la solicitud del equipo; "
+        "emití la licencia con el Administrador de Licencias en tu equipo emisor "
+        "y luego importá el archivo .lic aquí."
     ),
-    font=(
-        "Segoe UI",
-        10
-    ),
-    justify="center"
-).pack(
-    pady=10
-)
+    font=("Segoe UI", 10),
+    wraplength=600,
+    justify="center",
+).pack(fill="x", pady=(0, 18))
 
+formulario = tk.LabelFrame(contenedor, text="Datos de la institución", padx=16, pady=12, font=("Segoe UI", 10, "bold"))
+formulario.pack(fill="x")
 
-# =====================================================
-# BOTÓN INSTALAR
-# =====================================================
+for fila, (etiqueta, nombre) in enumerate([
+    ("Institución:", "institucion"),
+    ("Localidad:", "localidad"),
+    ("Provincia:", "provincia"),
+]):
+    tk.Label(formulario, text=etiqueta, font=("Segoe UI", 10)).grid(row=fila, column=0, sticky="w", padx=(0, 12), pady=7)
+    campo = tk.Entry(formulario, font=("Segoe UI", 10))
+    campo.grid(row=fila, column=1, sticky="ew", pady=7)
+    formulario.grid_columnconfigure(1, weight=1)
+    if nombre == "institucion":
+        entrada_institucion = campo
+    elif nombre == "localidad":
+        entrada_localidad = campo
+    else:
+        entrada_provincia = campo
 
-boton_instalar = tk.Button(
-    ventana,
-    text="ACTIVAR SGE",
-    font=(
-        "Segoe UI",
-        10,
-        "bold"
-    ),
-    width=28,
-    height=2,
-    command=instalar_y_activar
-)
+huella_marco = tk.LabelFrame(contenedor, text="Equipo autorizado", padx=12, pady=8, font=("Segoe UI", 10, "bold"))
+huella_marco.pack(fill="x", pady=(14, 0))
+tk.Label(huella_marco, text="Huella del equipo:", font=("Segoe UI", 9)).pack(anchor="w")
+entrada_huella = tk.Entry(huella_marco, font=("Consolas", 9), state="readonly")
+entrada_huella.pack(fill="x", pady=(5, 0))
+entrada_huella.config(state="normal")
+entrada_huella.insert(0, HUELLA_EQUIPO or ("No disponible: " + (ERROR_HUELLA or "error")))
+entrada_huella.config(state="readonly")
 
-boton_instalar.pack(
-    pady=5
-)
+botones = tk.Frame(contenedor)
+botones.pack(fill="x", pady=(18, 10))
 
+tk.Button(botones, text="1. GUARDAR SOLICITUD", command=guardar_solicitud, font=("Segoe UI", 10, "bold"), padx=10, pady=9).pack(fill="x", pady=4)
+tk.Button(botones, text="2. IMPORTAR LICENCIA EMITIDA", command=importar_licencia, font=("Segoe UI", 10, "bold"), padx=10, pady=9).pack(fill="x", pady=4)
+tk.Button(botones, text="INICIAR SGE", command=iniciar_sge, font=("Segoe UI", 10, "bold"), padx=10, pady=9).pack(fill="x", pady=4)
 
-# =====================================================
-# PIE DE VENTANA
-# =====================================================
+etiqueta_estado = tk.Label(contenedor, text="", font=("Segoe UI", 10, "bold"))
+etiqueta_estado.pack(anchor="w", pady=(8, 0))
+tk.Label(contenedor, text="SGE - Sistema de Gestión Educativa", font=("Segoe UI", 9)).pack(side="bottom", pady=(10, 0))
 
-tk.Label(
-    ventana,
-    text="SGE - Sistema de Gestión Escolar",
-    font=(
-        "Segoe UI",
-        9
-    )
-).pack(
-    side="bottom",
-    pady=10
-)
-
-
-# =====================================================
-# INICIAR INSTALADOR
-# =====================================================
-
-print()
-print("=" * 60)
-print("INSTALADOR SGE INICIADO")
-print("Esperando acción del usuario...")
-print("=" * 60)
-print()
-
-
+actualizar_estado()
 ventana.mainloop()

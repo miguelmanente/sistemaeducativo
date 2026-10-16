@@ -1,8 +1,9 @@
 {
     "producto": "SGE",
-    "id_solicitud": "2363d876-f523-45b9-89aa-d38b3bef52f8",
-    "institucion": "La Paz",
+    "id_solicitud": "7b691665-2882-4eda-99cf-fdfa60364465",
+    "institucion": "EET N°3",
     "localidad": "San Nicolás",
-    "provincia": "Buenos Aires",
-    "fecha_solicitud": "2026-10-12 18:04:10"
+    "provincia": "Bs As",
+    "fecha_solicitud": "2026-10-14 20:29:53",
+    "huella_equipo": "C6E54137649EFD300C27C7D8655208ECF99BEA6A97ED761881088848CD5D1429"
 }

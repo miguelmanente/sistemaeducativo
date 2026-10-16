@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['activacion_sge.py'],
+    ['instalador_sge.py'],
     pathex=['.'],
     binaries=[],
     datas=[('Licenciamiento\\claves\\clave_publica.pem', 'claves')],
