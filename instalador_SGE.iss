@@ -4,7 +4,7 @@
 ; ============================================================
 
 #define MyAppName "SGE"
-#define MyAppVersion "1.0.4"
+#define MyAppVersion "1.0.5"
 #define MyAppPublisher "SGE"
 #define MyAppDescription "Sistema de Gestión Educativa"
 
@@ -19,7 +19,7 @@ UninstallDisplayIcon={app}\SGE.ico
 DefaultDirName={autopf}\SGE
 DefaultGroupName=SGE
 OutputDir=instalador
-OutputBaseFilename=Instalador_SGE_1.0.4
+OutputBaseFilename=Instalador_SGE_1.0.5
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
@@ -61,5 +61,3 @@ Name: "{group}\Desinstalar SGE"; Filename: "{uninstallexe}"
 ; No abrir SGE hasta que haya una licencia válida.
 ; El técnico prepara la solicitud y luego importa la licencia emitida.
 Filename: "{app}\ActivacionSGE.exe"; Description: "Preparar activación de SGE"; Flags: nowait postinstall skipifsilent
-
-
