@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['instalador_sge.py'],
+    ['activacion_sge.py'],
     pathex=['.'],
     binaries=[],
     datas=[('Licenciamiento\\claves\\clave_publica.pem', 'claves')],
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    uac_admin=True,
 )
