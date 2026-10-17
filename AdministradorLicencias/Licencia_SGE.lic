@@ -1,16 +1,16 @@
 {
     "datos": {
         "producto": "SGE",
-        "id_licencia": "SGE-2026-F5543AC4",
-        "id_solicitud": "8f9b15a7-e100-4973-ac24-1ff97ed22a6f",
-        "institucion": "Particular",
-        "localidad": "San Nicolás",
-        "provincia": "Buenos Aires",
-        "tipo": "prueba",
+        "id_licencia": "SGE-2026-105530DD",
+        "id_solicitud": "7a4a0dc3-1772-4e62-b9e7-ed9174ae50f5",
+        "institucion": "EET n°3",
+        "localidad": "SN",
+        "provincia": "BA",
+        "tipo": "permanente",
         "version": "1.0",
-        "fecha_emision": "2026-10-05",
-        "fecha_vencimiento": "2026-11-04",
+        "fecha_emision": "2026-10-16",
+        "fecha_vencimiento": null,
         "huella_equipo": "C6E54137649EFD300C27C7D8655208ECF99BEA6A97ED761881088848CD5D1429"
     },
-    "firma": "LvvOTfnI7LaJpQ+BFvh+z2tuqrHpf/HkAqyH/kA0PgVSzDb8tFIC2oB9wHHD8kBEXhWTSNROm1hNLROM599QDw=="
+    "firma": "nNmUUjGpADJA/UeGB6HAzgMdXLHDIFs6Oxd4/u3/ZFUvVGo4Eio6RG9aLbEhlEnbNgNw+tp3mKdv5XsMd7AGAQ=="
 }
